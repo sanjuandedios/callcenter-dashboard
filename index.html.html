@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Center Dashboard — Clínica San Juan de Dios Cusco</title>
+<style>
+  :root {
+    --azul:#0D8BAB;--cyan:#58CBF5;--naranja:#FFAC4D;--naranja-dk:#e8903a;
+    --rojo:#E53E3E;--verde:#2E8B57;--fondo:#F0F7FA;--blanco:#fff;
+    --gris:#EDF2F7;--gris-t:#4A5568;--negro:#1A202C;--borde:#CBD5E0;
+    --sh:0 2px 12px rgba(13,139,171,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fondo);color:var(--negro);}
+
+  /* SETUP SCREEN */
+  #setup-screen{position:fixed;inset:0;background:rgba(13,139,171,0.97);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .setup-box{background:#fff;border-radius:20px;padding:40px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+  .setup-box h2{color:var(--azul);font-size:22px;margin-bottom:8px;}
+  .setup-box p{color:var(--gris-t);font-size:13px;margin-bottom:20px;line-height:1.6;}
+  .setup-steps{background:var(--fondo);border-radius:10px;padding:16px 20px;margin-bottom:20px;}
+  .setup-steps li{font-size:12px;color:var(--gris-t);margin-bottom:8px;padding-left:8px;}
+  .setup-steps li strong{color:var(--negro);}
+  .setup-input{width:100%;padding:12px 16px;border:2px solid var(--borde);border-radius:10px;font-size:14px;margin-bottom:12px;transition:border .2s;}
+  .setup-input:focus{outline:none;border-color:var(--azul);}
+  .setup-btn{width:100%;padding:14px;background:var(--azul);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s;}
+  .setup-btn:hover{background:#0a6e8a;}
+  .setup-note{font-size:11px;color:#888;text-align:center;margin-top:10px;}
+  #setup-error{color:var(--rojo);font-size:12px;margin-top:8px;display:none;}
+
+  /* LOADING */
+  #loading-screen{position:fixed;inset:0;background:var(--fondo);z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+  .spinner{width:48px;height:48px;border:5px solid var(--borde);border-top-color:var(--azul);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loading-screen p{color:var(--gris-t);font-size:14px;}
+
+  /* HEADER */
+  header{background:linear-gradient(135deg,var(--azul) 0%,#0a6e8a 60%,#08546d 100%);padding:22px 36px;position:sticky;top:0;z-index:100;box-shadow:0 3px 16px rgba(0,0,0,0.18);}
+  header h1{color:#fff;font-size:20px;font-weight:700;}
+  header p{color:var(--cyan);font-size:12px;margin-top:3px;opacity:.9;}
+  .hrow{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .badge{background:var(--naranja);color:#fff;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge.ok{background:var(--verde);}
+  .btn-config{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;}
+  .btn-config:hover{background:rgba(255,255,255,0.25);}
+  .last-update{color:rgba(255,255,255,0.7);font-size:11px;margin-top:4px;}
+
+  /* NAV */
+  nav{background:var(--azul);padding:0 36px;display:flex;gap:2px;overflow-x:auto;}
+  nav button{background:transparent;border:none;color:rgba(255,255,255,.7);padding:11px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+  nav button:hover{color:#fff;}
+  nav button.active{color:#fff;border-bottom-color:var(--naranja);}
+
+  /* MAIN */
+  main{padding:26px 36px;max-width:1380px;margin:0 auto;}
+  .section{display:none;} .section.active{display:block;}
+
+  /* KPI CARDS */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;}
+  .kc{background:var(--blanco);border-radius:12px;padding:18px 20px;box-shadow:var(--sh);border-left:5px solid var(--azul);transition:box-shadow .2s;}
+  .kc:hover{box-shadow:0 6px 24px rgba(13,139,171,.18);}
+  .kc.danger{border-left-color:var(--rojo);}.kc.warn{border-left-color:var(--naranja);}.kc.ok{border-left-color:var(--verde);}
+  .kl{font-size:10px;font-weight:700;color:var(--gris-t);letter-spacing:.8px;text-transform:uppercase;}
+  .kv{font-size:28px;font-weight:800;margin:4px 0 2px;line-height:1;}
+  .kv.red{color:var(--rojo);}.kv.or{color:var(--naranja-dk);}.kv.gr{color:var(--verde);}
+  .ks{font-size:11px;color:var(--gris-t);}
+
+  /* CHARTS */
+  .cg{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+  .cg.one{grid-template-columns:1fr;}
+  .cb{background:var(--blanco);border-radius:12px;padding:20px;box-shadow:var(--sh);}
+  .ct{font-size:11px;font-weight:700;color:var(--azul);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;}
+  .chart-wrap{position:relative;height:220px;}
+
+  /* TABLES */
+  .tw{overflow-x:auto;border-radius:12px;box-shadow:var(--sh);margin-bottom:24px;}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;background:var(--blanco);}
+  thead th{background:var(--azul);color:#fff;padding:10px 12px;text-align:center;font-weight:700;white-space:nowrap;font-size:11px;}
+  tbody tr:nth-child(even){background:var(--gris);}
+  tbody tr:hover{background:#dbeef5;}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--borde);text-align:right;white-space:nowrap;}
+  tbody td:first-child{text-align:left;font-weight:600;}
+  .sr td{background:var(--naranja)!important;color:#fff;font-weight:800;}
+  .dr td{background:#fff0f0!important;}.wr td{background:#fff8ec!important;}
+  .tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+  .tr{background:#ffe0e0;color:#c53030;}.to{background:#fff0d5;color:#b7600a;}.tg{background:#d4f4e3;color:#276749;}
+
+  /* ALERTS */
+  .ab{border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;}
+  .ar{background:#fff5f5;border-left:5px solid var(--rojo);}
+  .ao{background:#fffaf0;border-left:5px solid var(--naranja);}
+  .ab2{background:#ebf8ff;border-left:5px solid var(--azul);}
+  .at{font-weight:800;margin-bottom:3px;}
+  .ar .at{color:var(--rojo);}.ao .at{color:var(--naranja-dk);}.ab2 .at{color:var(--azul);}
+  .st{font-size:17px;font-weight:800;color:var(--azul);margin-bottom:16px;padding-bottom:8px;border-bottom:3px solid var(--cyan);}
+
+  /* EMPTY STATE */
+  .empty{text-align:center;padding:60px 20px;color:var(--gris-t);}
+  .empty-icon{font-size:48px;margin-bottom:12px;}
+  .empty h3{font-size:16px;font-weight:700;margin-bottom:8px;}
+  .empty p{font-size:13px;}
+
+  footer{text-align:center;padding:20px;color:var(--gris-t);font-size:11px;border-top:1px solid var(--borde);}
+  @media(max-width:768px){main{padding:16px 14px;}.cg{grid-template-columns:1fr;}nav,header{padding-left:14px;padding-right:14px;}}
+</style>
+</head>
+<body>
+
+
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p>Cargando datos desde Google Sheets...</p>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hrow">
+    <div>
+      <h1>📊 Call Center — Clínica San Juan de Dios Cusco</h1>
+      <p id="header-sub">Cargando datos...</p>
+      <div class="last-update" id="last-update"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div class="badge" id="sat-badge">Cargando...</div>
+      
+      <button class="btn-config" onclick="loadData()">🔄 Actualizar</button>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <button class="active" onclick="show('res',this)">Resumen Ejecutivo</button>
+  <button onclick="show('men',this)">Base Mensual</button>
+  <button onclick="show('kpi',this)">KPIs Operativos</button>
+  <button onclick="show('eco',this)">Impacto Económico</button>
+  <button onclick="show('sat',this)">Saturación</button>
+</nav>
+
+<main>
+  <div id="res" class="section active">
+    <div class="st">Resumen Ejecutivo</div>
+    <div class="kpi-grid" id="kpiCards"></div>
+    <div class="cg">
+      <div class="cb"><div class="ct">Volumen Mensual de Contactos (Llamadas + WA)</div><div class="chart-wrap"><canvas id="cVol"></canvas></div></div>
+      <div class="cb"><div class="ct">% Llamadas Perdidas — Tendencia</div><div class="chart-wrap"><canvas id="cPerd"></canvas></div></div>
+    </div>
+    <div id="alertasSat"></div>
+  </div>
+
+  <div id="men" class="section">
+    <div class="st">Base Mensual Consolidada</div>
+    <div class="tw"><table><thead><tr><th>Período</th><th>Días</th><th>Llam. Totales</th><th>Llam. Reg.</th><th>Llam. Perdidas</th><th>% Perd.</th><th>Citas Tel.</th><th>Conv% Tel.</th><th>Conv. WA</th><th>Citas WA</th><th>WA No Resp.</th><th>Total Citas</th><th>Citas/Día</th></tr></thead><tbody id="tMen"></tbody></table></div>
+  </div>
+
+  <div id="kpi" class="section">
+    <div class="st">KPIs Operativos — Productividad por Operador</div>
+    <div class="cg">
+      <div class="cb"><div class="ct">Carga Operativa Diaria (Llam. + WA / Día)</div><div class="chart-wrap"><canvas id="cCar"></canvas></div></div>
+      <div class="cb"><div class="ct">Tasas de Conversión por Canal (%)</div><div class="chart-wrap"><canvas id="cCon"></canvas></div></div>
+    </div>
+    <div class="tw"><table><thead><tr><th>Período</th><th>Días</th><th>Llam/Día</th><th>WA/Día</th><th>Carga/Día</th><th>Perd/Día</th><th>%Perd</th><th>Citas Tel/Día</th><th>Citas WA/Día</th><th>Conv% Tel</th><th>Conv% WA</th><th>Alerta</th></tr></thead><tbody id="tKPI"></tbody></table></div>
+  </div>
+
+  <div id="eco" class="section">
+    <div class="st">Impacto Económico — Citas Potencialmente Perdidas</div>
+    <div class="ab ar"><div class="at">💰 Supuestos del modelo</div>Precio promedio consulta: S/. 90 · Tasa de conversión contactos no atendidos: 40%</div>
+    <div class="kpi-grid" id="ecoCards"></div>
+    <div class="cg one"><div class="cb"><div class="ct">Impacto Económico Mensual Estimado (S/.)</div><div class="chart-wrap"><canvas id="cEco"></canvas></div></div></div>
+    <div class="tw"><table><thead><tr><th>Período</th><th>Llam. Perdidas</th><th>WA No Resp.</th><th>No Atendidos</th><th>Citas Pot. Perd.</th><th>Ingreso Pot. Perdido (S/.)</th><th>Nivel</th></tr></thead><tbody id="tEco"></tbody></table></div>
+  </div>
+
+  <div id="sat" class="section">
+    <div class="st">Análisis de Saturación</div>
+    <div class="cg one"><div class="cb"><div class="ct">Carga Diaria vs Capacidad Estimada (1 Operador)</div><div class="chart-wrap"><canvas id="cSat"></canvas></div></div></div>
+    <div class="kpi-grid" id="satCards"></div>
+  </div>
+</main>
+
+<footer id="footer-text">Clínica San Juan de Dios Cusco · Dashboard conectado a Google Sheets · Datos actualizados al abrir</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIA4t7t0AvH36P4tN_qUfQSoU-rIvGb3-dMliu6JA1IF_fudTdQhzxrsJfm8vNqTkCObBCS-IBGyXX/pub?gid=1106821445&single=true&output=csv";
+const TICKET = 90;
+let charts = {};
+let MONTHLY = [];
+
+async function loadData() {
+  document.getElementById('loading-screen').style.display = 'flex';
+  try {
+    const res = await fetch(SHEET_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    processData(parseCSV(text));
+    document.getElementById('last-update').textContent = 'Última actualización: ' + new Date().toLocaleString('es-PE');
+  } catch(e) {
+    document.getElementById('header-sub').textContent = 'Error al cargar — revisa tu conexión';
+    alert('No se pudo cargar el Sheet.\nError: ' + e.message);
+  } finally {
+    document.getElementById('loading-screen').style.display = 'none';
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const cols = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; }
+      else if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += line[i];
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function processData(rows) {
+  const daily = [];
+  for (const row of rows) {
+    if (!row[0]) continue;
+    const dm = row[0].match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (!dm) continue;
+    const day=+dm[1], month=+dm[2], year=+dm[3];
+    if (year < 2024 || year > 2030) continue;
+    const tc=+row[1]||0, rc=+row[2]||tc, lc=+row[3]||0, ap=+row[4]||0;
+    const wc=+row[5]||0, aw=+row[6]||0, wu=+row[7]||0, oc=+row[8]||0;
+    daily.push({year,month,day,tc,rc,lc,ap,wc,aw,wu,oc});
+  }
+
+  if (daily.length === 0) {
+    document.getElementById('header-sub').textContent = 'Sin datos — el operador aún no ha llenado registros';
+    document.getElementById('sat-badge').textContent = 'Sin datos';
+    return;
+  }
+
+  const monthly = {};
+  for (const r of daily) {
+    const key = r.year + '-' + String(r.month).padStart(2,'0');
+    if (!monthly[key]) monthly[key] = {year:r.year,month:r.month,key,days:0,tc:0,rc:0,lc:0,ap:0,wc:0,aw:0,wu:0,oc:0};
+    const m = monthly[key];
+    m.days++; m.tc+=r.tc; m.rc+=r.rc; m.lc+=r.lc; m.ap+=r.ap;
+    m.wc+=r.wc; m.aw+=r.aw; m.wu+=r.wu; m.oc+=r.oc;
+  }
+  MONTHLY = Object.values(monthly).sort((a,b)=>a.key.localeCompare(b.key));
+
+  const last = daily[daily.length-1];
+  document.getElementById('header-sub').textContent =
+    daily[0].day+'/'+daily[0].month+'/'+daily[0].year+' – '+last.day+'/'+last.month+'/'+last.year+
+    ' · 1 operador · '+daily.length+' días con reporte';
+
+  const lastM = MONTHLY[MONTHLY.length-1];
+  const lp = lastM.tc>0 ? (lastM.lc/lastM.tc*100) : 0;
+  const badge = document.getElementById('sat-badge');
+  if (lp>30) { badge.textContent='⚠️ SATURACIÓN CRÍTICA'; badge.className='badge'; }
+  else if (lp>15) { badge.textContent='🟠 SATURACIÓN ALTA'; badge.className='badge'; }
+  else { badge.textContent='✅ Operación Normal'; badge.className='badge ok'; }
+
+  renderAll();
+}
+
+const MN=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const pct=(n,d)=>d>0?+(n/d*100).toFixed(1):0;
+const dv=(n,d)=>d>0?+(n/d).toFixed(1):0;
+const fmt=n=>n.toLocaleString('es-PE');
+const lbl=m=>MN[m.month]+'-'+String(m.year).slice(2);
+
+function renderAll() {
+  renderKPICards(); renderAlerts(); renderTabMensual();
+  renderTabKPI(); renderTabEco(); renderEcoCards(); renderSatCards();
+  destroyCharts(); renderCharts();
+}
+function destroyCharts() { Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+
+function renderKPICards() {
+  const s=(k)=>MONTHLY.reduce((a,m)=>a+m[k],0);
+  const tTC=s('tc'),tWC=s('wc'),tAP=s('ap'),tAW=s('aw'),tLC=s('lc'),tWU=s('wu');
+  const pl=Math.round((tLC+tWU)*.4)*TICKET;
+  document.getElementById('kpiCards').innerHTML=`
+    <div class="kc ok"><div class="kl">Llamadas Totales</div><div class="kv gr">${fmt(tTC)}</div><div class="ks">Período completo</div></div>
+    <div class="kc ok"><div class="kl">Conversaciones WA</div><div class="kv gr">${fmt(tWC)}</div><div class="ks">Período completo</div></div>
+    <div class="kc ok"><div class="kl">Citas Agendadas</div><div class="kv gr">${fmt(tAP+tAW)}</div><div class="ks">Tel + WhatsApp</div></div>
+    <div class="kc danger"><div class="kl">Llamadas Perdidas</div><div class="kv red">${fmt(tLC)}</div><div class="ks">${pct(tLC,tTC)}% del total</div></div>
+    <div class="kc warn"><div class="kl">WA No Respondidos</div><div class="kv or">${fmt(tWU)}</div><div class="ks">Total período</div></div>
+    <div class="kc danger"><div class="kl">Ingreso Pot. Perdido</div><div class="kv red">S/. ${fmt(pl)}</div><div class="ks">Estimado 40% conv.</div></div>`;
+}
+
+function renderAlerts() {
+  const m=MONTHLY[MONTHLY.length-1];
+  const pp=pct(m.lc,m.tc), cg=dv(m.tc+m.wc,m.days);
+  let h='';
+  if(pp>30) h=`<div class="ab ar"><div class="at">🔴 SATURACIÓN CRÍTICA — ${lbl(m)}</div>El ${pp}% de llamadas se perdieron. Carga: ${cg} contactos/día para 1 operador.</div>`;
+  else if(pp>15) h=`<div class="ab ao"><div class="at">🟠 ALERTA — ${lbl(m)}</div>${pp}% de llamadas perdidas. Carga: ${cg} contactos/día.</div>`;
+  else h=`<div class="ab ab2"><div class="at">✅ Operación dentro de parámetros — ${lbl(m)}</div>${pp}% llamadas perdidas. Carga: ${cg} contactos/día.</div>`;
+  document.getElementById('alertasSat').innerHTML=h;
+}
+
+function renderTabMensual() {
+  let h='';
+  MONTHLY.forEach(m=>{
+    const pp=pct(m.lc,m.tc),ct=pct(m.ap,m.rc),cd=dv(m.ap+m.aw,m.days);
+    const cl=pp>30?'class="dr"':pp>15?'class="wr"':'';
+    h+=`<tr ${cl}><td>${lbl(m)}</td><td>${m.days}</td><td>${fmt(m.tc)}</td><td>${fmt(m.rc)}</td>
+      <td>${fmt(m.lc)}</td><td>${pp}%</td><td>${fmt(m.ap)}</td><td>${ct}%</td>
+      <td>${fmt(m.wc)}</td><td>${fmt(m.aw)}</td><td>${fmt(m.wu)}</td><td>${fmt(m.ap+m.aw)}</td><td>${cd}</td></tr>`;
+  });
+  const s=(k)=>MONTHLY.reduce((a,m)=>a+m[k],0);
+  const [tc,rc,lc,ap,wc,aw,wu,d]=(['tc','rc','lc','ap','wc','aw','wu','days']).map(s);
+  h+=`<tr class="sr"><td>TOTAL</td><td>${d}</td><td>${fmt(tc)}</td><td>${fmt(rc)}</td>
+    <td>${fmt(lc)}</td><td>${pct(lc,tc)}%</td><td>${fmt(ap)}</td><td>${pct(ap,rc)}%</td>
+    <td>${fmt(wc)}</td><td>${fmt(aw)}</td><td>${fmt(wu)}</td><td>${fmt(ap+aw)}</td><td>${dv(ap+aw,d)}</td></tr>`;
+  document.getElementById('tMen').innerHTML=h;
+}
+
+function renderTabKPI() {
+  let h='';
+  MONTHLY.forEach(m=>{
+    const cg=dv(m.tc+m.wc,m.days),pp=pct(m.lc,m.tc);
+    const al=pp>30?'<span class="tag tr">🔴 CRÍTICO</span>':pp>15?'<span class="tag to">🟠 ALTO</span>':pp>5?'<span class="tag to">🟡 MOD</span>':'<span class="tag tg">🟢 OK</span>';
+    const cl=pp>30?'class="dr"':pp>15?'class="wr"':'';
+    h+=`<tr ${cl}><td>${lbl(m)}</td><td>${m.days}</td><td>${dv(m.tc,m.days)}</td><td>${dv(m.wc,m.days)}</td>
+      <td><strong>${cg}</strong></td><td>${dv(m.lc,m.days)}</td><td>${pp}%</td>
+      <td>${dv(m.ap,m.days)}</td><td>${dv(m.aw,m.days)}</td>
+      <td>${pct(m.ap,m.rc)}%</td><td>${pct(m.aw,m.wc)}%</td><td>${al}</td></tr>`;
+  });
+  document.getElementById('tKPI').innerHTML=h;
+}
+
+function renderTabEco() {
+  let h='';
+  MONTHLY.forEach(m=>{
+    const nr=m.lc+m.wu,cp=Math.round(nr*.4),ing=cp*TICKET;
+    const nv=ing>10000?'<span class="tag tr">🔴 CRÍTICO</span>':ing>4000?'<span class="tag to">🟠 ALTO</span>':ing>1000?'<span class="tag to">🟡 MOD</span>':'<span class="tag tg">🟢 BAJO</span>';
+    h+=`<tr ${ing>10000?'class="dr"':''}><td>${lbl(m)}</td><td>${fmt(m.lc)}</td><td>${fmt(m.wu)}</td>
+      <td>${fmt(nr)}</td><td>${cp}</td><td><strong>S/. ${fmt(ing)}</strong></td><td>${nv}</td></tr>`;
+  });
+  const tnr=MONTHLY.reduce((a,m)=>a+m.lc+m.wu,0),tcp=Math.round(tnr*.4);
+  h+=`<tr class="sr"><td>TOTAL</td><td>${fmt(MONTHLY.reduce((a,m)=>a+m.lc,0))}</td>
+    <td>${fmt(MONTHLY.reduce((a,m)=>a+m.wu,0))}</td><td>${fmt(tnr)}</td>
+    <td>${tcp}</td><td>S/. ${fmt(tcp*TICKET)}</td><td>—</td></tr>`;
+  document.getElementById('tEco').innerHTML=h;
+}
+
+function renderEcoCards() {
+  const tLC=MONTHLY.reduce((a,m)=>a+m.lc,0),tWU=MONTHLY.reduce((a,m)=>a+m.wu,0);
+  const pl=Math.round((tLC+tWU)*.4)*TICKET;
+  const last2=MONTHLY.slice(-2).reduce((a,m)=>a+Math.round((m.lc+m.wu)*.4)*TICKET,0);
+  document.getElementById('ecoCards').innerHTML=`
+    <div class="kc danger"><div class="kl">Ingreso Perdido Total</div><div class="kv red">S/. ${fmt(pl)}</div><div class="ks">Período completo</div></div>
+    <div class="kc danger"><div class="kl">Últimos 2 Meses</div><div class="kv red">S/. ${fmt(last2)}</div><div class="ks">Meses más recientes</div></div>`;
+}
+
+function renderSatCards() {
+  if(!MONTHLY.length) return;
+  const first=MONTHLY[0],last=MONTHLY[MONTHLY.length-1];
+  const maxM=MONTHLY.reduce((a,m)=>(m.tc+m.wc)/m.days>(a.tc+a.wc)/a.days?m:a);
+  document.getElementById('satCards').innerHTML=`
+    <div class="kc"><div class="kl">Carga Inicial (${lbl(first)})</div><div class="kv">${dv(first.tc+first.wc,first.days)}</div><div class="ks">Contactos/día</div></div>
+    <div class="kc danger"><div class="kl">Pico Histórico (${lbl(maxM)})</div><div class="kv red">${dv(maxM.tc+maxM.wc,maxM.days)}</div><div class="ks">Contactos/día — máximo</div></div>
+    <div class="kc danger"><div class="kl">Carga Actual (${lbl(last)})</div><div class="kv red">${dv(last.tc+last.wc,last.days)}</div><div class="ks">Contactos/día</div></div>
+    <div class="kc warn"><div class="kl">Capacidad 1 Operador</div><div class="kv or">120</div><div class="ks">Contactos/día sostenibles</div></div>`;
+}
+
+function renderCharts() {
+  const lb=MONTHLY.map(lbl);
+  const mk=(id,type,datasets,scOpts={})=>{
+    const ctx=document.getElementById(id); if(!ctx) return;
+    charts[id]=new Chart(ctx,{type,data:{labels:lb,datasets},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:9}},...scOpts}}}});
+  };
+
+  mk('cVol','bar',[
+    {label:'Llamadas',data:MONTHLY.map(m=>m.tc),backgroundColor:'#0D8BABcc',borderRadius:3,stack:'s'},
+    {label:'WhatsApp',data:MONTHLY.map(m=>m.wc),backgroundColor:'#58CBF5cc',borderRadius:3,stack:'s'},
+  ],{stacked:true});
+
+  mk('cPerd','line',[
+    {label:'% Llam. Perdidas',data:MONTHLY.map(m=>pct(m.lc,m.tc)),borderColor:'#E53E3E',backgroundColor:'#E53E3E22',fill:true,tension:.4,pointRadius:4},
+    {label:'Alerta (15%)',data:MONTHLY.map(()=>15),borderColor:'#FFAC4D',borderDash:[5,5],pointRadius:0,borderWidth:1.5,fill:false},
+    {label:'Crítico (30%)',data:MONTHLY.map(()=>30),borderColor:'#E53E3E',borderDash:[5,5],pointRadius:0,borderWidth:1.5,fill:false},
+  ],{ticks:{callback:v=>v+'%'}});
+
+  mk('cCar','line',[
+    {label:'Carga/Día',data:MONTHLY.map(m=>dv(m.tc+m.wc,m.days)),borderColor:'#0D8BAB',backgroundColor:'#0D8BAB22',fill:true,tension:.4,pointRadius:4},
+    {label:'Cap. 1 Op. (120)',data:MONTHLY.map(()=>120),borderColor:'#FFAC4D',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false},
+    {label:'Sobresaturación (160)',data:MONTHLY.map(()=>160),borderColor:'#E53E3E',borderDash:[4,4],borderWidth:2,pointRadius:0,fill:false},
+  ]);
+
+  mk('cCon','line',[
+    {label:'Conv% Teléfono',data:MONTHLY.map(m=>pct(m.ap,m.rc)),borderColor:'#2E8B57',backgroundColor:'#2E8B5722',fill:true,tension:.4,pointRadius:4},
+    {label:'Conv% WhatsApp',data:MONTHLY.map(m=>pct(m.aw,m.wc)),borderColor:'#FFAC4D',backgroundColor:'#FFAC4D22',fill:true,tension:.4,pointRadius:4},
+  ],{ticks:{callback:v=>v+'%'}});
+
+  mk('cEco','bar',[
+    {label:'Ingreso Pot. Perdido (S/.)',
+      data:MONTHLY.map(m=>Math.round((m.lc+m.wu)*.4)*TICKET),
+      backgroundColor:MONTHLY.map(m=>{const v=Math.round((m.lc+m.wu)*.4)*TICKET;return v>10000?'#E53E3Ecc':v>4000?'#FFAC4Dcc':'#58CBF599';}),
+      borderRadius:4},
+  ],{ticks:{callback:v=>'S/.'+v.toLocaleString()}});
+
+  mk('cSat','line',[
+    {label:'Carga/Día',data:MONTHLY.map(m=>dv(m.tc+m.wc,m.days)),borderColor:'#0D8BAB',backgroundColor:'#0D8BAB22',fill:true,tension:.4,pointRadius:5},
+    {label:'Cap. Estimada (120)',data:MONTHLY.map(()=>120),borderColor:'#FFAC4D',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false},
+    {label:'Sobresaturación (160)',data:MONTHLY.map(()=>160),borderColor:'#E53E3E',borderDash:[4,4],borderWidth:2,pointRadius:0,fill:false},
+  ]);
+}
+
+function show(id,btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
