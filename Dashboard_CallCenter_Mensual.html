@@ -162,10 +162,14 @@
 
   <div id="eco" class="section">
     <div class="st">Impacto Económico del Mes</div>
-    <div class="ab ar"><div class="at">💰 Supuestos</div>Precio promedio consulta: S/. 80 · Tasa de conversión contactos no atendidos: 40% · Contactos no atendidos = Llamadas Perdidas + WA No Respondidos</div>
+    <div class="ab ar"><div class="at">💰 Supuestos — Pérdidas</div>Precio promedio consulta: S/. 80 · Tasa de conversión contactos no atendidos: 40% · Contactos no atendidos = Llamadas Perdidas + WA No Respondidos</div>
+    <div class="ab ab2"><div class="at">📊 Supuesto — Ingreso Generado</div>Ingreso Real = Citas Agendadas (Tel + WA) × S/. 80, asumiendo <strong>100% de asistencia</strong>. Es un techo teórico: no descuenta inasistencias ni cancelaciones, así que el número real probablemente sea algo menor.</div>
     <div class="kpi-grid" id="ecoCards"></div>
-    <div class="cg one"><div class="cb"><div class="ct">Ingreso Potencial Perdido — Día por Día (S/.)</div><div class="chart-wrap"><canvas id="cEcoDia"></canvas></div></div></div>
-    <div class="tw"><table><thead><tr><th>Día</th><th>Llam. Perdidas</th><th>WA No Resp.</th><th>No Atendidos</th><th>Citas Pot. Perd.</th><th>Ingreso Pot. Perdido (S/.)</th></tr></thead><tbody id="tEcoDia"></tbody></table></div>
+    <div class="cg">
+      <div class="cb"><div class="ct">Ingreso Generado vs Ingreso Potencial Perdido — Día por Día (S/.)</div><div class="chart-wrap"><canvas id="cEcoComp"></canvas></div></div>
+      <div class="cb"><div class="ct">Ingreso Potencial Perdido — Día por Día (S/.)</div><div class="chart-wrap"><canvas id="cEcoDia"></canvas></div></div>
+    </div>
+    <div class="tw"><table><thead><tr><th>Día</th><th>Citas Logradas</th><th>Ingreso Generado (S/.)</th><th>Llam. Perdidas</th><th>WA No Resp.</th><th>Citas Pot. Perd.</th><th>Ingreso Pot. Perdido (S/.)</th></tr></thead><tbody id="tEcoDia"></tbody></table></div>
   </div>
 
 </main>
@@ -335,6 +339,8 @@ function renderEcoCards(rows, agg) {
   const nr = agg.lc + agg.wu;
   const cp = Math.round(nr*.4);
   const ing = cp*TICKET;
+  const citasLogradas = agg.ap + agg.aw;
+  const ingresoReal = citasLogradas * TICKET;
   const worstDay = rows.reduce((a,r)=>{
     const v = Math.round((r.lc+r.wu)*.4)*TICKET;
     const av = Math.round((a.lc+a.wu)*.4)*TICKET;
@@ -342,9 +348,10 @@ function renderEcoCards(rows, agg) {
   }, rows[0]||{lc:0,wu:0,day:0});
   const worstVal = Math.round((worstDay.lc+worstDay.wu)*.4)*TICKET;
   document.getElementById('ecoCards').innerHTML = `
+    <div class="kc ok"><div class="kl">Ingreso Real Generado</div><div class="kv gr">S/. ${fmt(ingresoReal)}</div><div class="ks">${citasLogradas} citas logradas × S/.${TICKET}</div></div>
     <div class="kc danger"><div class="kl">Ingreso Pot. Perdido del Mes</div><div class="kv red">S/. ${fmt(ing)}</div><div class="ks">${cp} citas potenciales perdidas</div></div>
     <div class="kc danger"><div class="kl">Peor Día del Mes</div><div class="kv red">Día ${worstDay.day||'-'}</div><div class="ks">S/. ${fmt(worstVal)} en riesgo ese día</div></div>
-    <div class="kc warn"><div class="kl">Promedio Diario en Riesgo</div><div class="kv or">S/. ${fmt(Math.round(ing/agg.days)||0)}</div><div class="ks">Por día del mes</div></div>`;
+    <div class="kc warn"><div class="kl">% Ingreso en Riesgo</div><div class="kv or">${ingresoReal>0?Math.round(ing/ingresoReal*100):0}%</div><div class="ks">Perdido vs generado</div></div>`;
 }
 
 function renderTablaDiaria(rows) {
@@ -361,10 +368,11 @@ function renderTablaEcoDia(rows) {
   let h = '';
   rows.forEach(r => {
     const nr = r.lc+r.wu, cp = Math.round(nr*.4), ing = cp*TICKET;
+    const citasDia = r.ap + r.aw, ingResDia = citasDia * TICKET;
     const cl = ing>2000?'class="dr"':ing>800?'class="wr"':'';
-    h += `<tr ${cl}><td>${r.day}</td><td>${r.lc}</td><td>${r.wu}</td><td>${nr}</td><td>${cp}</td><td><strong>S/. ${fmt(ing)}</strong></td></tr>`;
+    h += `<tr ${cl}><td>${r.day}</td><td>${citasDia}</td><td><strong style="color:#2E8B57">S/. ${fmt(ingResDia)}</strong></td><td>${r.lc}</td><td>${r.wu}</td><td>${cp}</td><td><strong style="color:#E53E3E">S/. ${fmt(ing)}</strong></td></tr>`;
   });
-  document.getElementById('tEcoDia').innerHTML = h || '<tr><td colspan="6" style="text-align:center;padding:20px">Sin datos para este mes</td></tr>';
+  document.getElementById('tEcoDia').innerHTML = h || '<tr><td colspan="7" style="text-align:center;padding:20px">Sin datos para este mes</td></tr>';
 }
 
 function renderCompareSection(y, m) {
@@ -462,6 +470,11 @@ function renderCharts(rows, agg) {
     {label:'Conv% Tel',data:rows.map(r=>pct(r.ap,r.rc)),borderColor:'#2E8B57',backgroundColor:'#2E8B5722',fill:true,tension:.3,pointRadius:3},
     {label:'Conv% WA',data:rows.map(r=>pct(r.aw,r.wc)),borderColor:'#FFAC4D',backgroundColor:'#FFAC4D22',fill:true,tension:.3,pointRadius:3},
   ],{ticks:{callback:v=>v+'%'}});
+
+  mk('cEcoComp','bar',[
+    {label:'Ingreso Generado',data:rows.map(r=>(r.ap+r.aw)*TICKET),backgroundColor:'#2E8B57cc',borderRadius:3},
+    {label:'Ingreso Pot. Perdido',data:rows.map(r=>Math.round((r.lc+r.wu)*.4)*TICKET),backgroundColor:'#E53E3Ecc',borderRadius:3},
+  ],{ticks:{callback:v=>'S/.'+v.toLocaleString()}});
 
   mk('cEcoDia','bar',[
     {label:'Ingreso Pot. Perdido (S/.)',data:rows.map(r=>Math.round((r.lc+r.wu)*.4)*TICKET),
