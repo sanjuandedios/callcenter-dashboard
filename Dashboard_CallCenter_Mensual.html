@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Center Dashboard — Clínica San Juan de Dios Cusco</title>
+<style>
+  :root {
+    --azul:#0D8BAB;--cyan:#58CBF5;--naranja:#FFAC4D;--naranja-dk:#e8903a;
+    --rojo:#E53E3E;--verde:#2E8B57;--fondo:#F0F7FA;--blanco:#fff;
+    --gris:#EDF2F7;--gris-t:#4A5568;--negro:#1A202C;--borde:#CBD5E0;
+    --sh:0 2px 12px rgba(13,139,171,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fondo);color:var(--negro);}
+
+  #loading-screen{position:fixed;inset:0;background:var(--fondo);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+  .spinner{width:48px;height:48px;border:5px solid var(--borde);border-top-color:var(--azul);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loading-screen p{color:var(--gris-t);font-size:14px;}
+
+  header{background:linear-gradient(135deg,var(--azul) 0%,#0a6e8a 60%,#08546d 100%);padding:20px 36px;position:sticky;top:0;z-index:100;box-shadow:0 3px 16px rgba(0,0,0,0.18);}
+  header h1{color:#fff;font-size:19px;font-weight:700;}
+  header p{color:var(--cyan);font-size:12px;margin-top:3px;opacity:.9;}
+  .hrow{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  .badge{background:var(--naranja);color:#fff;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge.ok{background:var(--verde);}
+  .last-update{color:rgba(255,255,255,0.7);font-size:11px;margin-top:4px;}
+
+  /* MONTH SELECTOR */
+  .month-bar{background:#fff;padding:12px 36px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);position:sticky;top:74px;z-index:99;flex-wrap:wrap;}
+  .month-bar label{font-size:12px;font-weight:700;color:var(--gris-t);}
+  .month-bar select{padding:8px 14px;border:2px solid var(--borde);border-radius:8px;font-size:13px;font-weight:600;color:var(--azul);background:#fff;cursor:pointer;}
+  .month-bar select:focus{outline:none;border-color:var(--azul);}
+  .compare-toggle{display:flex;align-items:center;gap:6px;margin-left:auto;}
+  .compare-toggle input{width:16px;height:16px;cursor:pointer;}
+  .compare-toggle label{cursor:pointer;font-size:12px;color:var(--gris-t);}
+
+  nav{background:var(--azul);padding:0 36px;display:flex;gap:2px;overflow-x:auto;}
+  nav button{background:transparent;border:none;color:rgba(255,255,255,.7);padding:11px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+  nav button:hover{color:#fff;}
+  nav button.active{color:#fff;border-bottom-color:var(--naranja);}
+
+  main{padding:24px 36px;max-width:1380px;margin:0 auto;}
+  .section{display:none;} .section.active{display:block;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;}
+  .kc{background:var(--blanco);border-radius:12px;padding:18px 20px;box-shadow:var(--sh);border-left:5px solid var(--azul);transition:box-shadow .2s;}
+  .kc:hover{box-shadow:0 6px 24px rgba(13,139,171,.18);}
+  .kc.danger{border-left-color:var(--rojo);}.kc.warn{border-left-color:var(--naranja);}.kc.ok{border-left-color:var(--verde);}
+  .kl{font-size:10px;font-weight:700;color:var(--gris-t);letter-spacing:.8px;text-transform:uppercase;}
+  .kv{font-size:28px;font-weight:800;margin:4px 0 2px;line-height:1;}
+  .kv.red{color:var(--rojo);}.kv.or{color:var(--naranja-dk);}.kv.gr{color:var(--verde);}
+  .ks{font-size:11px;color:var(--gris-t);}
+
+  .cg{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+  .cg.one{grid-template-columns:1fr;}
+  .cb{background:var(--blanco);border-radius:12px;padding:20px;box-shadow:var(--sh);}
+  .ct{font-size:11px;font-weight:700;color:var(--azul);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;}
+  .chart-wrap{position:relative;height:240px;}
+
+  .tw{overflow-x:auto;border-radius:12px;box-shadow:var(--sh);margin-bottom:24px;}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;background:var(--blanco);}
+  thead th{background:var(--azul);color:#fff;padding:10px 12px;text-align:center;font-weight:700;white-space:nowrap;font-size:11px;}
+  tbody tr:nth-child(even){background:var(--gris);}
+  tbody tr:hover{background:#dbeef5;}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--borde);text-align:right;white-space:nowrap;}
+  tbody td:first-child{text-align:left;font-weight:600;}
+  .sr td{background:var(--naranja)!important;color:#fff;font-weight:800;}
+  .dr td{background:#fff0f0!important;}.wr td{background:#fff8ec!important;}
+  .tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+  .tr{background:#ffe0e0;color:#c53030;}.to{background:#fff0d5;color:#b7600a;}.tg{background:#d4f4e3;color:#276749;}
+
+  .ab{border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;}
+  .ar{background:#fff5f5;border-left:5px solid var(--rojo);}
+  .ao{background:#fffaf0;border-left:5px solid var(--naranja);}
+  .ab2{background:#ebf8ff;border-left:5px solid var(--azul);}
+  .at{font-weight:800;margin-bottom:3px;}
+  .ar .at{color:var(--rojo);}.ao .at{color:var(--naranja-dk);}.ab2 .at{color:var(--azul);}
+  .st{font-size:17px;font-weight:800;color:var(--azul);margin-bottom:16px;padding-bottom:8px;border-bottom:3px solid var(--cyan);}
+
+  .empty{text-align:center;padding:50px 20px;color:var(--gris-t);}
+  .empty-icon{font-size:40px;margin-bottom:10px;}
+
+  footer{text-align:center;padding:20px;color:var(--gris-t);font-size:11px;border-top:1px solid var(--borde);}
+  @media(max-width:768px){main{padding:16px 14px;}.cg{grid-template-columns:1fr;}nav,header,.month-bar{padding-left:14px;padding-right:14px;}.month-bar{top:64px;}}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p>Cargando datos desde Google Sheets...</p>
+</div>
+
+<header>
+  <div class="hrow">
+    <div>
+      <h1>📊 Call Center — Clínica San Juan de Dios Cusco</h1>
+      <p id="header-sub">Cargando datos...</p>
+      <div class="last-update" id="last-update"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div class="badge" id="sat-badge">Cargando...</div>
+      <button class="btn-config" onclick="loadData()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">🔄 Actualizar</button>
+    </div>
+  </div>
+</header>
+
+<div class="month-bar">
+  <label>📅 Mes a analizar:</label>
+  <select id="monthSelect" onchange="onMonthChange()"></select>
+  <div class="compare-toggle">
+    <input type="checkbox" id="compareToggle" onchange="onMonthChange()">
+    <label for="compareToggle">Comparar con mismo mes del año anterior</label>
+  </div>
+</div>
+
+<nav>
+  <button class="active" onclick="show('res',this)">Resumen del Mes</button>
+  <button onclick="show('evo',this)">Evolución Diaria</button>
+  <button onclick="show('kpi',this)">KPIs Operativos</button>
+  <button onclick="show('eco',this)">Impacto Económico</button>
+</nav>
+
+<main>
+
+  <div id="res" class="section active">
+    <div class="st">Resumen del Mes Seleccionado</div>
+    <div id="alertasSat"></div>
+    <div class="kpi-grid" id="kpiCards"></div>
+    <div class="cg">
+      <div class="cb"><div class="ct">Contactos por Día (Llamadas + WhatsApp)</div><div class="chart-wrap"><canvas id="cVolDia"></canvas></div></div>
+      <div class="cb"><div class="ct">% Llamadas Perdidas — Día por Día</div><div class="chart-wrap"><canvas id="cPerdDia"></canvas></div></div>
+    </div>
+    <div id="compareSection"></div>
+  </div>
+
+  <div id="evo" class="section">
+    <div class="st">Evolución Diaria del Mes</div>
+    <div class="cg one">
+      <div class="cb"><div class="ct">Llamadas Totales vs Perdidas — Día por Día</div><div class="chart-wrap"><canvas id="cEvoLlam"></canvas></div></div>
+    </div>
+    <div class="cg one">
+      <div class="cb"><div class="ct">Conversaciones WhatsApp vs No Respondidos — Día por Día</div><div class="chart-wrap"><canvas id="cEvoWA"></canvas></div></div>
+    </div>
+    <div class="cg one">
+      <div class="cb"><div class="ct">Citas Agendadas por Día (Teléfono + WhatsApp)</div><div class="chart-wrap"><canvas id="cEvoCitas"></canvas></div></div>
+    </div>
+    <div class="tw"><table><thead><tr><th>Día</th><th>Llam. Totales</th><th>Llam. Perdidas</th><th>% Perd.</th><th>Citas Tel.</th><th>Conv. WA</th><th>Citas WA</th><th>WA No Resp.</th></tr></thead><tbody id="tDiario"></tbody></table></div>
+  </div>
+
+  <div id="kpi" class="section">
+    <div class="st">KPIs Operativos del Mes</div>
+    <div class="ab ab2"><div class="at">📋 Metodología</div>Un solo operador. Conv% Tel = Citas Tel / Llamadas Registradas. Conv% WA = Citas WA / Conversaciones WA. Carga diaria = Llamadas + Conversaciones WA por día.</div>
+    <div class="kpi-grid" id="kpiOpCards"></div>
+    <div class="cg">
+      <div class="cb"><div class="ct">Carga Operativa Diaria del Mes</div><div class="chart-wrap"><canvas id="cCargaDia"></canvas></div></div>
+      <div class="cb"><div class="ct">Conversión por Canal — Día por Día (%)</div><div class="chart-wrap"><canvas id="cConvDia"></canvas></div></div>
+    </div>
+  </div>
+
+  <div id="eco" class="section">
+    <div class="st">Impacto Económico del Mes</div>
+    <div class="ab ar"><div class="at">💰 Supuestos</div>Precio promedio consulta: S/. 80 · Tasa de conversión contactos no atendidos: 40% · Contactos no atendidos = Llamadas Perdidas + WA No Respondidos</div>
+    <div class="kpi-grid" id="ecoCards"></div>
+    <div class="cg one"><div class="cb"><div class="ct">Ingreso Potencial Perdido — Día por Día (S/.)</div><div class="chart-wrap"><canvas id="cEcoDia"></canvas></div></div></div>
+    <div class="tw"><table><thead><tr><th>Día</th><th>Llam. Perdidas</th><th>WA No Resp.</th><th>No Atendidos</th><th>Citas Pot. Perd.</th><th>Ingreso Pot. Perdido (S/.)</th></tr></thead><tbody id="tEcoDia"></tbody></table></div>
+  </div>
+
+</main>
+<footer id="footer-text">Clínica San Juan de Dios Cusco · Dashboard mensual conectado a Google Sheets</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIA4t7t0AvH36P4tN_qUfQSoU-rIvGb3-dMliu6JA1IF_fudTdQhzxrsJfm8vNqTkCObBCS-IBGyXX/pub?gid=1106821445&single=true&output=csv";
+const TICKET = 80;
+let charts = {};
+let DAILY = [];
+let MONTH_KEYS = [];
+let currentKey = null;
+
+async function loadData() {
+  document.getElementById('loading-screen').style.display = 'flex';
+  try {
+    const res = await fetch(SHEET_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    processData(parseCSV(text));
+    document.getElementById('last-update').textContent = 'Última actualización: ' + new Date().toLocaleString('es-PE');
+  } catch(e) {
+    document.getElementById('header-sub').textContent = 'Error al cargar — revisa tu conexión';
+    alert('No se pudo cargar el Sheet.\nError: ' + e.message);
+  } finally {
+    document.getElementById('loading-screen').style.display = 'none';
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const cols = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; }
+      else if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += line[i];
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function processData(rows) {
+  DAILY = [];
+  for (const row of rows) {
+    if (!row[0]) continue;
+    const dm = row[0].match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (!dm) continue;
+    const day=+dm[1], month=+dm[2], year=+dm[3];
+    if (year < 2024 || year > 2030) continue;
+    const tc=+row[1]||0, rc=+row[2]||tc, lc=+row[3]||0, ap=+row[4]||0;
+    const wc=+row[5]||0, aw=+row[6]||0, wu=+row[7]||0, oc=+row[8]||0;
+    DAILY.push({year,month,day,tc,rc,lc,ap,wc,aw,wu,oc});
+  }
+  DAILY.sort((a,b)=> a.year-b.year || a.month-b.month || a.day-b.day);
+
+  if (DAILY.length === 0) {
+    document.getElementById('header-sub').textContent = 'Sin datos — el operador aún no ha llenado registros';
+    document.getElementById('sat-badge').textContent = 'Sin datos';
+    return;
+  }
+
+  // Build month list
+  const keySet = new Set();
+  DAILY.forEach(r => keySet.add(r.year+'-'+String(r.month).padStart(2,'0')));
+  MONTH_KEYS = Array.from(keySet).sort();
+
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = MONTH_KEYS.map(k => {
+    const [y,m] = k.split('-');
+    return `<option value="${k}">${MN[+m]} ${y}</option>`;
+  }).join('');
+
+  // Default to last month with data
+  currentKey = MONTH_KEYS[MONTH_KEYS.length-1];
+  sel.value = currentKey;
+
+  const last = DAILY[DAILY.length-1];
+  const first = DAILY[0];
+  document.getElementById('header-sub').textContent =
+    first.day+'/'+first.month+'/'+first.year+' – '+last.day+'/'+last.month+'/'+last.year+
+    ' · 1 operador · '+DAILY.length+' días con reporte';
+
+  onMonthChange();
+}
+
+const MN=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MNS=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const pct=(n,d)=>d>0?+(n/d*100).toFixed(1):0;
+const dv=(n,d)=>d>0?+(n/d).toFixed(1):0;
+const fmt=n=>n.toLocaleString('es-PE');
+
+function getMonthData(key) {
+  const [y,m] = key.split('-').map(Number);
+  return DAILY.filter(r => r.year===y && r.month===m);
+}
+
+function aggMonth(rows) {
+  return rows.reduce((a,r)=>{
+    a.tc+=r.tc; a.rc+=r.rc; a.lc+=r.lc; a.ap+=r.ap;
+    a.wc+=r.wc; a.aw+=r.aw; a.wu+=r.wu; a.oc+=r.oc; a.days++;
+    return a;
+  }, {tc:0,rc:0,lc:0,ap:0,wc:0,aw:0,wu:0,oc:0,days:0});
+}
+
+function onMonthChange() {
+  currentKey = document.getElementById('monthSelect').value;
+  const rows = getMonthData(currentKey);
+  const agg = aggMonth(rows);
+  const [y,m] = currentKey.split('-').map(Number);
+
+  // Badge
+  const pp = pct(agg.lc, agg.tc);
+  const badge = document.getElementById('sat-badge');
+  if (pp>30) { badge.textContent='⚠️ SATURACIÓN CRÍTICA'; badge.className='badge'; }
+  else if (pp>15) { badge.textContent='🟠 SATURACIÓN ALTA'; badge.className='badge'; }
+  else { badge.textContent='✅ Operación Normal'; badge.className='badge ok'; }
+
+  renderAlerts(rows, agg, y, m);
+  renderKPICards(agg);
+  renderKPIOpCards(rows, agg);
+  renderEcoCards(rows, agg);
+  renderTablaDiaria(rows);
+  renderTablaEcoDia(rows);
+  renderCompareSection(y, m);
+  destroyCharts();
+  renderCharts(rows, agg);
+}
+
+function destroyCharts() { Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+
+function renderAlerts(rows, agg, y, m) {
+  const pp = pct(agg.lc, agg.tc);
+  const cg = dv(agg.tc+agg.wc, agg.days);
+  let h = '';
+  const mname = MN[m] + ' ' + y;
+  if (pp>30) h = `<div class="ab ar"><div class="at">🔴 SATURACIÓN CRÍTICA — ${mname}</div>El ${pp}% de llamadas se perdieron este mes. Carga: ${cg} contactos/día para 1 operador.</div>`;
+  else if (pp>15) h = `<div class="ab ao"><div class="at">🟠 ALERTA — ${mname}</div>${pp}% de llamadas perdidas. Carga: ${cg} contactos/día.</div>`;
+  else h = `<div class="ab ab2"><div class="at">✅ Operación dentro de parámetros — ${mname}</div>${pp}% llamadas perdidas. Carga: ${cg} contactos/día.</div>`;
+  document.getElementById('alertasSat').innerHTML = h;
+}
+
+function renderKPICards(agg) {
+  document.getElementById('kpiCards').innerHTML = `
+    <div class="kc ok"><div class="kl">Llamadas Totales</div><div class="kv gr">${fmt(agg.tc)}</div><div class="ks">${agg.days} días con reporte</div></div>
+    <div class="kc ok"><div class="kl">Conversaciones WA</div><div class="kv gr">${fmt(agg.wc)}</div><div class="ks">Este mes</div></div>
+    <div class="kc ok"><div class="kl">Citas Agendadas</div><div class="kv gr">${fmt(agg.ap+agg.aw)}</div><div class="ks">Tel + WhatsApp</div></div>
+    <div class="kc danger"><div class="kl">Llamadas Perdidas</div><div class="kv red">${fmt(agg.lc)}</div><div class="ks">${pct(agg.lc,agg.tc)}% del total</div></div>
+    <div class="kc warn"><div class="kl">WA No Respondidos</div><div class="kv or">${fmt(agg.wu)}</div><div class="ks">Al cierre del día</div></div>
+    <div class="kc"><div class="kl">Conv% Teléfono</div><div class="kv">${pct(agg.ap,agg.rc)}%</div><div class="ks">Citas / Llam. registradas</div></div>`;
+}
+
+function renderKPIOpCards(rows, agg) {
+  const maxDay = rows.reduce((a,r)=>(r.tc+r.wc)>(a.tc+a.wc)?r:a, rows[0]||{tc:0,wc:0,day:0});
+  document.getElementById('kpiOpCards').innerHTML = `
+    <div class="kc"><div class="kl">Carga Promedio/Día</div><div class="kv">${dv(agg.tc+agg.wc,agg.days)}</div><div class="ks">Llam. + WA por día</div></div>
+    <div class="kc danger"><div class="kl">Día Pico del Mes</div><div class="kv red">${maxDay.day||'-'}</div><div class="ks">${maxDay.tc+maxDay.wc} contactos ese día</div></div>
+    <div class="kc"><div class="kl">Conv% Teléfono</div><div class="kv">${pct(agg.ap,agg.rc)}%</div><div class="ks">Promedio del mes</div></div>
+    <div class="kc"><div class="kl">Conv% WhatsApp</div><div class="kv">${pct(agg.aw,agg.wc)}%</div><div class="ks">Promedio del mes</div></div>`;
+}
+
+function renderEcoCards(rows, agg) {
+  const nr = agg.lc + agg.wu;
+  const cp = Math.round(nr*.4);
+  const ing = cp*TICKET;
+  const worstDay = rows.reduce((a,r)=>{
+    const v = Math.round((r.lc+r.wu)*.4)*TICKET;
+    const av = Math.round((a.lc+a.wu)*.4)*TICKET;
+    return v>av ? r : a;
+  }, rows[0]||{lc:0,wu:0,day:0});
+  const worstVal = Math.round((worstDay.lc+worstDay.wu)*.4)*TICKET;
+  document.getElementById('ecoCards').innerHTML = `
+    <div class="kc danger"><div class="kl">Ingreso Pot. Perdido del Mes</div><div class="kv red">S/. ${fmt(ing)}</div><div class="ks">${cp} citas potenciales perdidas</div></div>
+    <div class="kc danger"><div class="kl">Peor Día del Mes</div><div class="kv red">Día ${worstDay.day||'-'}</div><div class="ks">S/. ${fmt(worstVal)} en riesgo ese día</div></div>
+    <div class="kc warn"><div class="kl">Promedio Diario en Riesgo</div><div class="kv or">S/. ${fmt(Math.round(ing/agg.days)||0)}</div><div class="ks">Por día del mes</div></div>`;
+}
+
+function renderTablaDiaria(rows) {
+  let h = '';
+  rows.forEach(r => {
+    const pp = pct(r.lc, r.tc);
+    const cl = pp>30?'class="dr"':pp>15?'class="wr"':'';
+    h += `<tr ${cl}><td>${r.day}</td><td>${r.tc}</td><td>${r.lc}</td><td>${pp}%</td><td>${r.ap}</td><td>${r.wc}</td><td>${r.aw}</td><td>${r.wu}</td></tr>`;
+  });
+  document.getElementById('tDiario').innerHTML = h || '<tr><td colspan="8" style="text-align:center;padding:20px">Sin datos para este mes</td></tr>';
+}
+
+function renderTablaEcoDia(rows) {
+  let h = '';
+  rows.forEach(r => {
+    const nr = r.lc+r.wu, cp = Math.round(nr*.4), ing = cp*TICKET;
+    const cl = ing>2000?'class="dr"':ing>800?'class="wr"':'';
+    h += `<tr ${cl}><td>${r.day}</td><td>${r.lc}</td><td>${r.wu}</td><td>${nr}</td><td>${cp}</td><td><strong>S/. ${fmt(ing)}</strong></td></tr>`;
+  });
+  document.getElementById('tEcoDia').innerHTML = h || '<tr><td colspan="6" style="text-align:center;padding:20px">Sin datos para este mes</td></tr>';
+}
+
+function renderCompareSection(y, m) {
+  const compare = document.getElementById('compareToggle').checked;
+  const box = document.getElementById('compareSection');
+  if (!compare) { box.innerHTML = ''; return; }
+
+  const prevKey = (y-1)+'-'+String(m).padStart(2,'0');
+  if (!MONTH_KEYS.includes(prevKey)) {
+    box.innerHTML = `<div class="ab ao"><div class="at">⚠️ Sin datos para comparar</div>No hay registros de ${MN[m]} ${y-1} en el Sheet.</div>`;
+    return;
+  }
+
+  const curRows = getMonthData(y+'-'+String(m).padStart(2,'0'));
+  const prevRows = getMonthData(prevKey);
+  const cur = aggMonth(curRows);
+  const prev = aggMonth(prevRows);
+
+  const rowsData = [
+    ['Llamadas Totales', prev.tc, cur.tc, null],
+    ['Llamadas Perdidas', prev.lc, cur.lc, 'd'],
+    ['Citas Teléfono', prev.ap, cur.ap, 'g'],
+    ['Conversaciones WA', prev.wc, cur.wc, null],
+    ['Citas WA', prev.aw, cur.aw, 'g'],
+    ['WA No Respondidos', prev.wu, cur.wu, 'd'],
+  ];
+  let rowsHtml = rowsData.map(([lb,v25,v26,k])=>{
+    const diff = v26-v25;
+    const p = v25>0 ? Math.round(diff/v25*100) : null;
+    const ar = diff>0 ? (k==='d'?'🔴↑':'🟢↑') : (diff<0 ? (k==='g'?'🔴↓':'🟢↓') : '—');
+    return `<tr><td style="text-align:left;padding:8px 14px;font-size:12px;border-bottom:1px solid #eee">${lb}</td>
+      <td style="padding:8px 14px;font-size:12px;text-align:right;border-bottom:1px solid #eee">${v25.toLocaleString()}</td>
+      <td style="padding:8px 14px;font-size:12px;text-align:right;border-bottom:1px solid #eee;font-weight:700">${v26.toLocaleString()}</td>
+      <td style="padding:8px 14px;font-size:12px;text-align:right;border-bottom:1px solid #eee">${p!==null?ar+' '+p+'%':'—'}</td></tr>`;
+  }).join('');
+
+  box.innerHTML = `<div class="cb" style="margin-top:8px">
+    <div class="ct">📅 ${MN[m]} ${y-1} vs ${MN[m]} ${y}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="background:#f0f7fa;padding:8px 14px;font-size:10px;text-align:left;color:#4A5568">Indicador</th>
+        <th style="background:#f0f7fa;padding:8px 14px;font-size:10px;text-align:right;color:#4A5568">${y-1}</th>
+        <th style="background:#f0f7fa;padding:8px 14px;font-size:10px;text-align:right;color:#4A5568">${y}</th>
+        <th style="background:#f0f7fa;padding:8px 14px;font-size:10px;text-align:right;color:#4A5568">Δ</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderCharts(rows, agg) {
+  const labels = rows.map(r => 'Día ' + r.day);
+  const mk = (id, type, datasets, scOpts={}) => {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    charts[id] = new Chart(ctx, {type, data:{labels, datasets}, options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:15}},
+              y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:9}},...scOpts}}
+    }});
+  };
+
+  mk('cVolDia','bar',[
+    {label:'Llamadas',data:rows.map(r=>r.tc),backgroundColor:'#0D8BABcc',borderRadius:3,stack:'s'},
+    {label:'WhatsApp',data:rows.map(r=>r.wc),backgroundColor:'#58CBF5cc',borderRadius:3,stack:'s'},
+  ],{stacked:true});
+
+  mk('cPerdDia','line',[
+    {label:'% Llam. Perdidas',data:rows.map(r=>pct(r.lc,r.tc)),borderColor:'#E53E3E',backgroundColor:'#E53E3E22',fill:true,tension:.3,pointRadius:3},
+    {label:'Alerta (15%)',data:rows.map(()=>15),borderColor:'#FFAC4D',borderDash:[5,5],pointRadius:0,borderWidth:1.5,fill:false},
+  ]);
+
+  mk('cEvoLlam','line',[
+    {label:'Llamadas Totales',data:rows.map(r=>r.tc),borderColor:'#0D8BAB',backgroundColor:'#0D8BAB22',fill:true,tension:.3,pointRadius:3},
+    {label:'Llamadas Perdidas',data:rows.map(r=>r.lc),borderColor:'#E53E3E',backgroundColor:'#E53E3E22',fill:true,tension:.3,pointRadius:3},
+  ]);
+
+  mk('cEvoWA','line',[
+    {label:'Conversaciones WA',data:rows.map(r=>r.wc),borderColor:'#58CBF5',backgroundColor:'#58CBF522',fill:true,tension:.3,pointRadius:3},
+    {label:'WA No Respondidos',data:rows.map(r=>r.wu),borderColor:'#FFAC4D',backgroundColor:'#FFAC4D22',fill:true,tension:.3,pointRadius:3},
+  ]);
+
+  mk('cEvoCitas','bar',[
+    {label:'Citas Teléfono',data:rows.map(r=>r.ap),backgroundColor:'#2E8B57cc',borderRadius:3,stack:'s'},
+    {label:'Citas WhatsApp',data:rows.map(r=>r.aw),backgroundColor:'#FFAC4Dcc',borderRadius:3,stack:'s'},
+  ],{stacked:true});
+
+  mk('cCargaDia','line',[
+    {label:'Carga Total/Día',data:rows.map(r=>r.tc+r.wc),borderColor:'#0D8BAB',backgroundColor:'#0D8BAB22',fill:true,tension:.3,pointRadius:3},
+    {label:'Cap. Estimada (120)',data:rows.map(()=>120),borderColor:'#FFAC4D',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false},
+  ]);
+
+  mk('cConvDia','line',[
+    {label:'Conv% Tel',data:rows.map(r=>pct(r.ap,r.rc)),borderColor:'#2E8B57',backgroundColor:'#2E8B5722',fill:true,tension:.3,pointRadius:3},
+    {label:'Conv% WA',data:rows.map(r=>pct(r.aw,r.wc)),borderColor:'#FFAC4D',backgroundColor:'#FFAC4D22',fill:true,tension:.3,pointRadius:3},
+  ],{ticks:{callback:v=>v+'%'}});
+
+  mk('cEcoDia','bar',[
+    {label:'Ingreso Pot. Perdido (S/.)',data:rows.map(r=>Math.round((r.lc+r.wu)*.4)*TICKET),
+     backgroundColor:rows.map(r=>{const v=Math.round((r.lc+r.wu)*.4)*TICKET;return v>2000?'#E53E3Ecc':v>800?'#FFAC4Dcc':'#58CBF599';}),
+     borderRadius:4},
+  ],{ticks:{callback:v=>'S/.'+v.toLocaleString()}});
+}
+
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
