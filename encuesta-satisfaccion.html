@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encuesta de satisfacción del paciente — Clínica San Juan de Dios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#F5F8FA;
+    --surface:#FFFFFF;
+    --ink:#13303D;
+    --ink-soft:#5C7480;
+    --azul:#0D8BAB;
+    --azul-dark:#0A6D86;
+    --cyan:#58CBF5;
+    --naranja:#FFAC4D;
+    --border:#DEE6EA;
+    --good:#2E9E6D;
+    --bad:#C24444;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Manrope',ui-sans-serif,system-ui,sans-serif; margin:0;}
+  .wrap{max-width:1100px; margin:0 auto; padding:28px 24px 64px;}
+
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:20px; flex-wrap:wrap; padding-bottom:22px; border-bottom:1px solid var(--border); margin-bottom:24px;
+  }
+  .brand{font-size:13px; font-weight:600; color:var(--azul-dark); letter-spacing:.01em;}
+  h1{font-size:26px; font-weight:800; margin-top:4px; line-height:1.2;}
+  .meta{font-size:13.5px; color:var(--ink-soft); margin-top:6px;}
+  .meta strong{color:var(--ink);}
+  .sync-status{font-size:12px; color:var(--azul-dark); margin-top:5px; font-weight:600; display:none;}
+
+  .upload-btn{
+    background:var(--azul); color:#fff; border:none; border-radius:8px;
+    font-family:'Inter'; font-weight:600; font-size:14px; padding:10px 16px;
+    cursor:pointer; white-space:nowrap;
+  }
+  .upload-btn:hover{background:var(--azul-dark);}
+  .upload-btn:disabled{opacity:.6; cursor:default;}
+  #fileInput{display:none;}
+  .upload-note{font-size:12px; color:var(--ink-soft); margin-top:6px; max-width:220px; text-align:right;}
+  .upload-status{font-size:13px; margin-top:8px; text-align:right; min-height:16px;}
+  .upload-status.ok{color:var(--good);}
+  .upload-status.err{color:var(--bad);}
+
+  .banner{
+    display:none; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    background:#FCEEEE; border:1px solid #E9B9B9; color:var(--bad);
+    border-radius:10px; padding:12px 16px; font-size:13.5px; margin-bottom:18px;
+  }
+  .banner.show{display:flex;}
+  .banner .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .banner button{
+    border:1px solid var(--bad); background:#fff; color:var(--bad); border-radius:7px;
+    font-family:'Inter'; font-weight:600; font-size:12.5px; padding:6px 11px; cursor:pointer;
+  }
+
+  .tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:22px;}
+  .tab{
+    padding:9px 16px; border-radius:20px; border:1px solid var(--border);
+    background:var(--surface); color:var(--ink-soft); font-size:14px; font-weight:600;
+    cursor:pointer; font-family:'Inter';
+  }
+  .tab[data-empty="true"]{color:#A7B4BA; border-style:dashed;}
+  .tab.active{background:var(--azul); border-color:var(--azul); color:#fff;}
+
+  .empty-month{
+    background:var(--surface); border:1px dashed var(--border); border-radius:12px;
+    padding:48px 24px; text-align:center; color:var(--ink-soft); font-size:14.5px;
+  }
+  .empty-month b{color:var(--ink); display:block; font-size:16px; margin-bottom:6px; font-family:'Manrope'; font-weight:700;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:16px;}
+  .kpi{
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--azul);
+    border-radius:10px; padding:14px 16px;
+  }
+  .kpi .label{font-size:12px; color:var(--ink-soft); line-height:1.3; min-height:30px;}
+  .kpi .value{font-size:26px; font-weight:800; font-family:'Manrope'; margin-top:6px;}
+  .kpi .value span{font-size:14px; font-weight:600; color:var(--ink-soft);}
+
+  .nps-card{
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--naranja);
+    border-radius:10px; padding:18px 20px; margin-bottom:22px; display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+  }
+  .nps-score{font-size:38px; font-weight:800; font-family:'Manrope'; color:var(--azul-dark); min-width:90px;}
+  .nps-score span{font-size:15px; color:var(--ink-soft); font-weight:600; display:block; margin-bottom:2px;}
+  .nps-breakdown{display:flex; gap:22px; flex-wrap:wrap; font-size:13.5px;}
+  .nps-breakdown div{color:var(--ink-soft);}
+  .nps-breakdown b{color:var(--ink); font-size:15px; display:block;}
+
+  .panels{display:grid; grid-template-columns:1.1fr .9fr; gap:16px; margin-bottom:16px;}
+  .evo-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;}
+  .evo-grid .panel canvas{max-height:230px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px;}
+  .panel h3{font-size:15px; font-weight:700; margin-bottom:14px;}
+  .panel canvas{max-height:230px;}
+
+  table.servicio-table{width:100%; border-collapse:collapse; margin-top:10px; font-size:13.5px;}
+  table.servicio-table th{text-align:left; color:var(--ink-soft); font-weight:600; padding:6px 4px; border-bottom:1px solid var(--border);}
+  table.servicio-table td{padding:7px 4px; border-bottom:1px solid var(--border);}
+  table.servicio-table tr:last-child td{border-bottom:none;}
+  .note{font-size:11.5px; color:var(--ink-soft); margin-top:8px;}
+
+  .comments{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .comments .panel ul{list-style:none; margin:0; padding:0; max-height:260px; overflow-y:auto;}
+  .comments .panel li{
+    font-size:13.5px; padding:9px 0; border-bottom:1px solid var(--border); line-height:1.45;
+  }
+  .comments .panel li:last-child{border-bottom:none;}
+  .comments .panel.improve h3{color:var(--bad);}
+  .comments .panel.best h3{color:var(--good);}
+  .comments .empty{color:var(--ink-soft); font-size:13px; padding:8px 0;}
+
+  @media (max-width:760px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .panels, .comments, .evo-grid{grid-template-columns:1fr;}
+    header.top{flex-direction:column;}
+    .upload-note, .upload-status{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="brand">Clínica San Juan de Dios · Comunicaciones y Marketing</div>
+      <h1>Encuesta de satisfacción del paciente</h1>
+      <div class="meta" id="metaLine">Cargando…</div>
+      <div class="sync-status" id="syncStatus"></div>
+    </div>
+    <div>
+      <button class="upload-btn" id="uploadBtn">Actualizar datos</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.json">
+      <div class="upload-note">Sube el export del mes (mismo formato del formulario) o un respaldo .json. Se combina con lo ya cargado, no lo reemplaza.</div>
+      <div class="upload-status" id="uploadStatus"></div>
+    </div>
+  </header>
+
+  <div class="banner" id="storageBanner">
+    <span id="storageBannerText"></span>
+    <div class="actions">
+      <button id="retrySaveBtn">Reintentar guardado</button>
+      <button id="downloadBackupBtn">Descargar respaldo (.json)</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="evo-grid">
+    <div class="panel">
+      <h3>Evolución mes a mes</h3>
+      <canvas id="chartEvolution"></canvas>
+    </div>
+    <div class="panel">
+      <h3>NPS y volumen de respuestas por mes</h3>
+      <canvas id="chartNpsEvolution"></canvas>
+    </div>
+  </div>
+  <div class="note" style="margin:-14px 0 22px;">Los espacios vacíos en las líneas indican meses sin datos cargados (ej. junio).</div>
+
+  <div id="content"></div>
+
+</div>
+
+<script>
+const SEED_DATA = [{"id": 1, "date": "2026-06-08T17:36:19", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 10, "s5": 10, "nps": 10, "best": "El dr. De odontología atención de 100", "improve": "Los servicios higiénicos", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 2, "date": "2026-06-08T17:56:12", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 5, "s4": 2, "s5": 7, "nps": 6, "best": "La atención del dr. Velarde", "improve": "Al personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 3, "date": "2026-06-08T17:56:48", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 7, "s3": 3, "s4": 1, "s5": 8, "nps": 5, "best": "Me indicaron que por esta vez no pagaría la consulta con nefrología ya que noes justo pagar 2 veces", "improve": "Pagar 2 veces en nefrologia", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 4, "date": "2026-06-08T18:01:10", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 5, "s4": 4, "s5": 8, "nps": 6, "best": "La atecnion del dr. De odontología 100 de 100", "improve": "La atención del personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 5, "date": "2026-06-09T10:39:09", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 9, "s3": 1, "s4": 1, "s5": 7, "nps": 5, "best": "Ninguna", "improve": "Personal de caja", "canal": "Presencial", "dificultad": "Sí", "cual": "Las señoritas no saben atender, no saben lo que hacen"}, {"id": 6, "date": "2026-06-09T10:40:41", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 8, "s3": 3, "s4": 1, "s5": 9, "nps": 5, "best": ".", "improve": "Atención preferencial", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 7, "date": "2026-06-09T11:48:02", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 3, "s4": 2, "s5": 6, "nps": 8, "best": "Muy buena la atención del dr. Quispe", "improve": "Los baños", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 8, "date": "2026-06-09T11:50:06", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 1, "s3": 1, "s4": 1, "s5": 8, "nps": 0, "best": "Ninguna", "improve": "Los médicos deben llegar. A la hora somos pacientes no juguetes", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 9, "date": "2026-06-10T15:14:17", "servicio": "Farmacia", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 8, "s4": 2, "s5": 9, "nps": 8, "best": "La atención en farmacia muy amables", "improve": "La atención de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 10, "date": "2026-06-10T15:25:37", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 1, "s3": 1, "s4": 1, "s5": 9, "nps": 0, "best": "Ninguna", "improve": "Capacitar a las señoritas no saben cómo girar una boleta", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 11, "date": "2026-06-10T17:00:24", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 8, "s2": 9, "s3": 3, "s4": 3, "s5": 8, "nps": 7, "best": ".", "improve": "Aumentar personal de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 12, "date": "2026-06-11T14:55:15", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 9, "s2": 7, "s3": 1, "s4": 1, "s5": 8, "nps": 5, "best": "Muy poco personal en admisión de laboratorio", "improve": "CAPACITAR AL PERSONAL", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 13, "date": "2026-06-11T15:01:20", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 1, "s4": 1, "s5": 8, "nps": 0, "best": "Buena", "improve": "Atención en caja", "canal": "Presencial", "dificultad": "Sí", "cual": "Las chicas de caja no saben guiar"}, {"id": 14, "date": "2026-06-15T12:10:33", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 1, "s4": 1, "s5": 9, "nps": 2, "best": "Perdida de tiempo", "improve": "Las ventanas de admisión", "canal": "Presencial", "dificultad": "Sí", "cual": "Las señoritas no saben los horarios de los médicos"}, {"id": 15, "date": "2026-06-15T12:29:26", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 2, "s3": 3, "s4": 1, "s5": 6, "nps": 5, "best": ".", "improve": ".", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 16, "date": "2026-06-15T12:39:57", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 1, "s3": 1, "s4": 1, "s5": 8, "nps": 4, "best": "Ninguna", "improve": "Ventanillas", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 17, "date": "2026-06-15T12:40:37", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 8, "s3": 3, "s4": 1, "s5": 8, "nps": 3, "best": "La atención del dr. Velazquez", "improve": "Personal de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 18, "date": "2026-06-15T14:32:45", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 3, "s4": 1, "s5": 8, "nps": 6, "best": ".", "improve": "El trato al paciente", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 19, "date": "2026-06-15T15:23:38", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 5, "s4": 5, "s5": 9, "nps": 8, "best": "La atención del médico Velazquez", "improve": "Atencion en caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 20, "date": "2026-06-15T16:28:35", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 5, "s4": 1, "s5": 8, "nps": 6, "best": "La atención del dr. Castro", "improve": "La atención en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 21, "date": "2026-06-15T17:07:54", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 5, "s4": 3, "s5": 8, "nps": 8, "best": "La atención del dr castro", "improve": "Atención de caja aumentar más personal", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 22, "date": "2026-06-16T09:40:51", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 6, "s4": 1, "s5": 9, "nps": 8, "best": "La atención del dr. Velazquez", "improve": "Aumentar personal de admisión caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 23, "date": "2026-06-16T10:08:37", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 8, "s4": 4, "s5": 9, "nps": 6, "best": "La atención del dr. Quispe", "improve": "Personal de admisión", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 24, "date": "2026-06-16T12:09:40", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 3, "s4": 3, "s5": 8, "nps": 6, "best": ".", "improve": "Los baños", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 25, "date": "2026-06-16T12:39:44", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 2, "s4": 2, "s5": 9, "nps": 7, "best": ".", "improve": "Más personas para atender", "canal": "Presencial", "dificultad": "Sí", "cual": "Al inicio indicaron que no había cupos disponibles"}, {"id": 26, "date": "2026-06-16T17:14:15", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 3, "s4": 1, "s5": 1, "nps": 6, "best": ".", "improve": "Los tiempos", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 27, "date": "2026-06-17T10:59:27", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 1, "s4": 1, "s5": 9, "nps": 6, "best": "Ninguna", "improve": "No tenían sistema para poder hacer el cobro", "canal": "Presencial", "dificultad": "Sí", "cual": "No tenían sistema"}, {"id": 28, "date": "2026-06-17T15:00:27", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 4, "s4": 3, "s5": 9, "nps": 8, "best": ".", "improve": "Atención de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 29, "date": "2026-06-18T16:18:57", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 1, "s2": 10, "s3": 1, "s4": 1, "s5": 8, "nps": 0, "best": "La chica de la ventanilla 3 ni tiene paciencia", "improve": "La atención de admisión", "canal": "Presencial", "dificultad": "Sí", "cual": "Ni saben manejar atenciones con seguro demore más de 30 minutos en ventanilla"}, {"id": 30, "date": "2026-06-19T16:50:12", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 5, "s4": 5, "s5": 8, "nps": 6, "best": "Ninguna", "improve": "Atención en ventanilla", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 31, "date": "2026-06-20T09:47:27", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 8, "s4": 4, "s5": 9, "nps": 8, "best": "Atención del dr, Velazquez", "improve": "Atención de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 32, "date": "2026-06-25T15:56:01", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 7, "s4": 7, "s5": 9, "nps": 8, "best": "La atención del dr. Holgado", "improve": "Tener más cajas", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 33, "date": "2026-06-25T16:01:18", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 8, "s4": 5, "s5": 9, "nps": 6, "best": "Ninguna", "improve": "La atención de caja demoran mucho", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 34, "date": "2026-06-26T15:16:21", "servicio": "Consulta externa", "tipo": "Familiar/Acompañante", "s1": 9, "s2": 10, "s3": 6, "s4": 1, "s5": 9, "nps": 0, "best": "Ninguna el personal no sabe ni que especialidaddes tiene la clínica", "improve": "Personal de caja", "canal": "Presencial", "dificultad": "Sí", "cual": "Me agendaron mal la cita con una especialidad que no pedi"}, {"id": 35, "date": "2026-06-26T15:30:07", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 1, "s4": 1, "s5": 9, "nps": 3, "best": ".", "improve": "Más personal en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 36, "date": "2026-06-26T16:40:28", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 10, "s3": 1, "s4": 1, "s5": 9, "nps": 3, "best": "Ninguna", "improve": "Manejar información adecuada y actualizada por parte del personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 37, "date": "2026-07-03T17:17:44", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 3, "s4": 4, "s5": 10, "nps": 7, "best": ".", "improve": "Aumentar personal de caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 38, "date": "2026-07-03T17:21:46", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 4, "s4": 5, "s5": 10, "nps": 9, "best": "Atencion del dr. Velazquez", "improve": "Atención de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 39, "date": "2026-07-14T12:22:03", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 6, "s4": 5, "s5": 9, "nps": 7, "best": "La atención del dr. Grajeda", "improve": "Implementar una caja para los pacientes que ya fuimos atendidos y no volver a firmar cola para hacer pago de exámenes", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 40, "date": "2026-07-14T14:50:07", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 6, "s4": 6, "s5": 9, "nps": 8, "best": "La atención del dr. Ávila", "improve": "La atención de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 41, "date": "2026-07-15T12:24:15", "servicio": "Consulta externa", "tipo": "Familiar/Acompañante", "s1": 7, "s2": 6, "s3": 5, "s4": 1, "s5": 8, "nps": 8, "best": "El pago yape", "improve": "Trato empático del personal", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 42, "date": "2026-07-15T16:18:30", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 6, "s2": 10, "s3": 7, "s4": 5, "s5": 5, "nps": 5, "best": "Pésima atención", "improve": "Todu", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 43, "date": "2026-07-15T16:45:37", "servicio": "Consulta externa", "tipo": "Familiar/Acompañante", "s1": 7, "s2": 4, "s3": 1, "s4": 1, "s5": 8, "nps": 0, "best": "Ayuda de ATENCIÓN AL USUARIO", "improve": "Los procesos de atención, pedir todos los laboratorios para no punzar a mi pequeño dos veces", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 44, "date": "2026-07-17T16:59:08", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 4, "s4": 2, "s5": 7, "nps": 6, "best": "..", "improve": "La atención muy lenta", "canal": "Presencial", "dificultad": "Sí", "cual": "El personal no sabe los horarios médicos ni como generar ni cita, bastante capacitación"}, {"id": 45, "date": "2026-07-17T17:05:10", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 8, "s3": 4, "s4": 3, "s5": 8, "nps": 7, "best": "La atención médica", "improve": "Caja muy lenta", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 46, "date": "2026-07-30T09:43:58", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 7, "s3": 6, "s4": 1, "s5": 8, "nps": 6, "best": "Ninguna", "improve": "Puntualidad en la atención medica", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 47, "date": "2026-07-30T09:49:46", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 6, "s3": 4, "s4": 1, "s5": 8, "nps": 5, "best": ".", "improve": "Atención puntual", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 48, "date": "2026-07-30T10:04:09", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 1, "s3": 3, "s4": 1, "s5": 1, "nps": 5, "best": "Ninguna", "improve": "La atención de caja demoran mucho", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 49, "date": "2026-07-30T10:06:58", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 5, "s3": 1, "s4": 1, "s5": 8, "nps": 1, "best": "Ninguna", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 50, "date": "2026-07-30T10:17:09", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 7, "s3": 1, "s4": 1, "s5": 8, "nps": 7, "best": ".", "improve": "Más personal en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 51, "date": "2026-07-30T11:11:42", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 4, "s3": 2, "s4": 2, "s5": 7, "nps": 5, "best": "Lo peor", "improve": "Puntualidad de los médicos", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 52, "date": "2026-07-30T11:35:37", "servicio": "Emergencia", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 10, "s4": 9, "s5": 9, "nps": 9, "best": "La atención del dr.", "improve": "Incrementar más médicos de urgencias", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 53, "date": "2026-07-30T12:26:56", "servicio": "Emergencia", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 9, "s4": 9, "s5": 9, "nps": 9, "best": "La atención", "improve": "Más personal médico", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 54, "date": "2026-07-30T13:10:57", "servicio": "Emergencia", "tipo": "Paciente", "s1": 9, "s2": 9, "s3": 9, "s4": 9, "s5": 10, "nps": 8, "best": ".", "improve": ".", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 55, "date": "2026-07-30T13:14:30", "servicio": "Emergencia", "tipo": "Paciente", "s1": 9, "s2": 9, "s3": 9, "s4": 9, "s5": 9, "nps": 9, "best": "La atención", "improve": "Más doctores de medicina general", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 56, "date": "2026-07-30T14:30:34", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 6, "s2": 10, "s3": 3, "s4": 1, "s5": 8, "nps": 7, "best": "Atención de la dra de cirugia", "improve": "Personal de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 57, "date": "2026-07-30T15:23:28", "servicio": "Rehabilitación", "tipo": "Paciente", "s1": 1, "s2": 10, "s3": 3, "s4": 1, "s5": 9, "nps": 8, "best": ".", "improve": "Personal que atiende no tiene paciencia", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 58, "date": "2026-07-30T16:17:48", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 2, "s4": 2, "s5": 8, "nps": 5, "best": "Atención del dr. Castillo", "improve": "Atención de recepción", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 59, "date": "2026-07-30T16:28:53", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 1, "s3": 1, "s4": 1, "s5": 7, "nps": 7, "best": "Ninguna", "improve": "Los doctores deben ser más consistentes con sus horas de llegada", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 60, "date": "2026-07-30T16:51:56", "servicio": "Rehabilitación", "tipo": "Paciente", "s1": 8, "s2": 9, "s3": 7, "s4": 7, "s5": 9, "nps": 7, "best": ".", "improve": "Mucho tiempo de espera", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 61, "date": "2026-07-30T16:57:19", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 6, "s2": 10, "s3": 5, "s4": 1, "s5": 7, "nps": 8, "best": ".", "improve": "Hora de llegada de los doctores", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 62, "date": "2026-07-30T17:10:51", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 10, "s3": 6, "s4": 4, "s5": 4, "nps": 8, "best": "Atención del dr. Velazquez", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 63, "date": "2026-07-30T17:15:12", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 7, "s4": 4, "s5": 8, "nps": 8, "best": ".", "improve": "Puntualidad de los doctores", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 64, "date": "2026-07-30T17:25:51", "servicio": "Farmacia", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 6, "s4": 6, "s5": 9, "nps": 7, "best": "Atención del doctor de neurología", "improve": "Más personal en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 65, "date": "2026-07-31T08:54:00", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 5, "s3": 1, "s4": 6, "s5": 8, "nps": 8, "best": "..", "improve": "Pesima atención", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 66, "date": "2026-07-31T09:02:45", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 9, "s4": 3, "s5": 8, "nps": 5, "best": "La atención médica", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 67, "date": "2026-07-31T09:05:49", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 9, "s4": 2, "s5": 10, "nps": 9, "best": "Atención médica", "improve": "Personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 68, "date": "2026-07-31T09:11:08", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 5, "s4": 5, "s5": 8, "nps": 4, "best": "Ninguna", "improve": "Personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 69, "date": "2026-07-31T09:18:59", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 6, "s2": 10, "s3": 3, "s4": 1, "s5": 9, "nps": 7, "best": ".", "improve": "Puntualidad de los médicos", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 70, "date": "2026-07-31T10:22:06", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 8, "s4": 1, "s5": 9, "nps": 7, "best": "Amabilidad del personal de rayos x", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 71, "date": "2026-07-31T10:24:02", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 1, "s4": 1, "s5": 9, "nps": 8, "best": ".", "improve": "Personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 72, "date": "2026-07-31T10:26:50", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 4, "s4": 4, "s5": 8, "nps": 7, "best": "Ninguna", "improve": "Puntualidad de los médicos", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 73, "date": "2026-07-31T11:00:17", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 8, "s2": 8, "s3": 2, "s4": 2, "s5": 8, "nps": 7, "best": "Ninguna", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 74, "date": "2026-07-31T11:05:09", "servicio": "Rehabilitación", "tipo": "Paciente", "s1": 8, "s2": 8, "s3": 8, "s4": 8, "s5": 8, "nps": 6, "best": "Ninguna", "improve": "No pude concluir mi terapia por el ruido abrumador", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 75, "date": "2026-07-31T11:10:01", "servicio": "Rehabilitación", "tipo": "Paciente", "s1": 8, "s2": 5, "s3": 8, "s4": 6, "s5": 1, "nps": 7, "best": ".", "improve": "Mucho ruido", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 76, "date": "2026-07-31T11:54:16", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 7, "s2": 7, "s3": 1, "s4": 1, "s5": 7, "nps": 5, "best": ".", "improve": "Más personas en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 77, "date": "2026-07-31T16:22:43", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 7, "s4": 4, "s5": 4, "nps": 6, "best": "Atención del dr. Holgado", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 78, "date": "2026-07-31T17:11:00", "servicio": "Farmacia", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 4, "s5": 8, "nps": 8, "best": "Atención de farmacia", "improve": "Admisión caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 79, "date": "2026-07-31T17:17:29", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 5, "s4": 5, "s5": 8, "nps": 7, "best": "Atención del dr. Holgado", "improve": "Que los doctores sean puntuales", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 80, "date": "2026-07-31T17:21:26", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 7, "s4": 5, "s5": 7, "nps": 8, "best": "Atención médica", "improve": "Personal de caja capacitar", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 81, "date": "2026-08-01T08:45:09", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 7, "s3": 8, "s4": 4, "s5": 4, "nps": 5, "best": ".", "improve": "Todo", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 82, "date": "2026-08-01T08:46:33", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 7, "s2": 7, "s3": 5, "s4": 4, "s5": 8, "nps": 7, "best": "Más personal de laboratorio", "improve": "Puntualidad", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 83, "date": "2026-08-01T09:00:55", "servicio": "Rehabilitación", "tipo": "Familiar/Acompañante", "s1": 7, "s2": 10, "s3": 6, "s4": 5, "s5": 4, "nps": 7, "best": "La atención del dr Zambrano", "improve": "El ruido de la construcción", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 84, "date": "2026-08-01T09:07:54", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 6, "s2": 10, "s3": 4, "s4": 4, "s5": 8, "nps": 5, "best": "Ninguna", "improve": "Perdí tiempo en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 85, "date": "2026-08-01T09:19:14", "servicio": "Farmacia", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 5, "s4": 3, "s5": 7, "nps": 8, "best": "Atención de farmacia", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 86, "date": "2026-08-01T09:39:52", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 3, "s4": 3, "s5": 8, "nps": 5, "best": "La atención del médico", "improve": "Personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 87, "date": "2026-08-01T10:02:08", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 2, "s4": 2, "s5": 8, "nps": 7, "best": "Atención del médico", "improve": "Atención de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 88, "date": "2026-08-01T10:03:39", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 5, "s3": 4, "s4": 3, "s5": 3, "nps": 5, "best": "Ninguna", "improve": "Los doctores tienen que estar puntual", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 89, "date": "2026-08-01T10:34:17", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 5, "s4": 4, "s5": 8, "nps": 6, "best": "Ninguna", "improve": "Atención de caja y puntualidad del doctor", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 90, "date": "2026-08-01T10:44:18", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 10, "s4": 1, "s5": 9, "nps": 7, "best": "Me dieron ticket para sorteo", "improve": "Horarios de los doctores", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 91, "date": "2026-08-01T11:29:07", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 6, "s4": 5, "s5": 9, "nps": 7, "best": "Ninguna", "improve": "Atención del personal", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 92, "date": "2026-08-05T16:36:49", "servicio": "Hospitalización", "tipo": "Familiar/Acompañante", "s1": 10, "s2": 10, "s3": 10, "s4": 10, "s5": 10, "nps": 10, "best": "Atención excelente del d4. Cardeña", "improve": "La bulla que aturde a los pacientes", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 93, "date": "2026-08-05T16:40:05", "servicio": "Hospitalización", "tipo": "Familiar/Acompañante", "s1": 10, "s2": 10, "s3": 6, "s4": 5, "s5": 1, "nps": 4, "best": "Atención buena mucha incomodidad por la bulla de construcción", "improve": "La BULLa", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 94, "date": "2026-08-05T16:52:05", "servicio": "Hospitalización", "tipo": "Familiar/Acompañante", "s1": 10, "s2": 10, "s3": 10, "s4": 10, "s5": 1, "nps": 2, "best": "Atención médica", "improve": "La bulla infernal", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 95, "date": "2026-08-05T16:59:17", "servicio": "Hospitalización", "tipo": "Familiar/Acompañante", "s1": 10, "s2": 10, "s3": 5, "s4": 5, "s5": 3, "nps": 5, "best": "Ninguna", "improve": "El ruido para un paciente operado no es saludable, imposibilita a una recuperación pronta", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 96, "date": "2026-08-05T17:19:19", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 3, "s4": 1, "s5": 9, "nps": 5, "best": "Ninguna", "improve": "Personal de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 97, "date": "2026-08-18T11:36:20", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 4, "s4": 4, "s5": 6, "nps": 7, "best": ".", "improve": "La atención de caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 98, "date": "2026-08-18T11:38:01", "servicio": "Farmacia", "tipo": "Paciente", "s1": 6, "s2": 6, "s3": 3, "s4": 2, "s5": 8, "nps": 6, "best": "Ninguna", "improve": "Más personal en farmacia", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 99, "date": "2026-08-18T11:39:49", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 7, "s4": 5, "s5": 5, "nps": 6, "best": "Atención del dr Velazquez", "improve": "Más personas en caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 100, "date": "2026-08-18T17:28:06", "servicio": "Farmacia", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 6, "s4": 4, "s5": 8, "nps": 6, "best": "Atención del dr Velazquez", "improve": "Mas personal en farmacia se hace mucha cola", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 101, "date": "2026-08-24T14:56:47", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 7, "s4": 3, "s5": 8, "nps": 7, "best": "Ninguna", "improve": "Personal en caja ventanilla presencial", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 102, "date": "2026-08-24T14:59:47", "servicio": "Farmacia", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 6, "s3": 5, "s4": 3, "s5": 6, "nps": 5, "best": "Atención del dr. Holgado", "improve": "Más personal en farmacia hice cola más de 20 minutos para una pastilla", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 103, "date": "2026-08-24T15:01:37", "servicio": "Rehabilitación", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 8, "s4": 1, "s5": 6, "nps": 7, "best": "Ninguna", "improve": "Personal de admisión terapias", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 104, "date": "2026-08-24T15:04:07", "servicio": "Urgencias", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 9, "s4": 9, "s5": 9, "nps": 9, "best": "La atención oportuna", "improve": "Especialidades en urgencias", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 105, "date": "2026-08-24T15:07:09", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 8, "s4": 4, "s5": 8, "nps": 7, "best": "Atención dr. Higor", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 106, "date": "2026-08-24T15:12:01", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 8, "s4": 4, "s5": 8, "nps": 8, "best": "Ayuda de la hermana", "improve": "Más personal de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 107, "date": "2026-08-24T15:14:05", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 8, "s4": 6, "s5": 8, "nps": 8, "best": "Atención del dr. Ávila", "improve": "Caja para los que ya pasamos consulta", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 108, "date": "2026-08-24T15:43:09", "servicio": "Consulta externa", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 1, "s3": 1, "s4": 3, "s5": 8, "nps": 0, "best": "Ninguna", "improve": "Puntualidad en los médicos 50 minutos esperando la atención de la dra Nuñez", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 109, "date": "2026-08-24T15:45:12", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 8, "s4": 6, "s5": 9, "nps": 9, "best": "Atención del dr grajeda", "improve": "Caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 110, "date": "2026-08-24T15:50:47", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 8, "s4": 5, "s5": 9, "nps": 7, "best": "Atención del dr choque", "improve": "Puntualidad de los doctores", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 111, "date": "2026-08-24T17:10:42", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 6, "s4": 5, "s5": 7, "nps": 7, "best": "Más personal de caja", "improve": "Más médicos para tanto paciente", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 112, "date": "2026-08-24T17:12:40", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 7, "s4": 5, "s5": 4, "nps": 8, "best": "Atención del dr grajeda", "improve": "Personal de admisión", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 113, "date": "2026-08-27T08:44:33", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 7, "s4": 6, "s5": 8, "nps": 6, "best": "Ninguna", "improve": "Más personal de caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 114, "date": "2026-08-27T08:54:55", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 8, "s4": 6, "s5": 8, "nps": 8, "best": "Atención con el dr. Grajeda", "improve": "Sus sistemas de atención muy lento", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 115, "date": "2026-08-27T15:50:19", "servicio": "Farmacia", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 4, "s4": 4, "s5": 8, "nps": 8, "best": "Atención del dr Ávila", "improve": "Más personal en farmacia", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 116, "date": "2026-08-27T15:52:40", "servicio": "Farmacia", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 3, "s4": 3, "s5": 8, "nps": 8, "best": ".", "improve": "Mucha cola en farmacia", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 117, "date": "2026-08-28T14:25:27", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 7, "s4": 6, "s5": 8, "nps": 9, "best": "Atención del dr. Ávila", "improve": "Más personal en triaje", "canal": "Teléfono", "dificultad": "No", "cual": null}, {"id": 118, "date": "2026-08-28T14:40:47", "servicio": "Farmacia", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 6, "s4": 4, "s5": 8, "nps": 8, "best": ".", "improve": "Muy lenta la atención en farmacia y una sola persona para tantos pacientes", "canal": "Teléfono", "dificultad": "No", "cual": null}, {"id": 119, "date": "2026-08-28T14:42:38", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 7, "s4": 6, "s5": 9, "nps": 8, "best": "Atención del dr choque", "improve": "Limpieza", "canal": "Teléfono", "dificultad": "No", "cual": null}, {"id": 120, "date": "2026-08-28T17:26:54", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 7, "s4": 6, "s5": 8, "nps": 9, "best": "Que encontré trumatologia", "improve": "Tener dr de ecografía", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 121, "date": "2026-08-28T17:28:24", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 10, "s5": 10, "nps": 10, "best": "Todo muy bien", "improve": "Incrementar el horario de atención de rayos x", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 122, "date": "2026-08-29T07:47:30", "servicio": "Farmacia", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 10, "s3": 8, "s4": 8, "s5": 8, "nps": 8, "best": "Atención más temprano", "improve": ".", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 123, "date": "2026-08-29T08:18:06", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 8, "s4": 7, "s5": 8, "nps": 10, "best": "La paciencia y amabilidad del dr. Ciro espejo", "improve": "Traer más doctores como el dr, ciro", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 124, "date": "2026-08-29T08:20:29", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 8, "s5": 8, "nps": 8, "best": ".", "improve": "Más personal en farmacia", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 125, "date": "2026-08-29T08:27:10", "servicio": "Hospitalización", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 8, "s3": 6, "s4": 6, "s5": 1, "nps": 0, "best": "Ninguna", "improve": "No se puede hospitalizar personas si saben que están en construcción, una persona no puede recuperarse con semejante ruido", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 126, "date": "2026-08-29T08:41:15", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 7, "s5": 8, "nps": 8, "best": "Primera vez que vengo y sentí una atención excelente por parte del medico tratante dr, Ciro espejo", "improve": "Contratar más profesional como el dr. Espejo", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 127, "date": "2026-08-29T09:37:15", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 6, "s4": 5, "s5": 8, "nps": 8, "best": ".", "improve": "Más personal en caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 128, "date": "2026-08-29T10:22:03", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 8, "s4": 3, "s5": 8, "nps": 8, "best": "Ninguna", "improve": "Más personas en caja, espere más de 40 minutos para poder pagar un examen indignante", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 129, "date": "2026-08-29T10:23:20", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 5, "s4": 4, "s5": 8, "nps": 6, "best": "Ninguna deben mejorar todo", "improve": "Capacitar al personal de caja, no brindan buena información", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 130, "date": "2026-08-31T09:40:56", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 8, "s4": 4, "s5": 4, "nps": 7, "best": "Atención del dr. Espejo", "improve": "Más personas en caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 131, "date": "2026-08-31T09:59:22", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 8, "s4": 4, "s5": 8, "nps": 7, "best": "Ninguna mucho tiempo se pierde en caja", "improve": "Más personal en admisión", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 132, "date": "2026-08-31T11:04:36", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 8, "s3": 8, "s4": 5, "s5": 5, "nps": 7, "best": "Ninguna", "improve": "Tener ventanilla preferencial", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 133, "date": "2026-08-31T12:06:43", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 8, "s4": 1, "s5": 8, "nps": 8, "best": "Atención del dr. Ciro", "improve": "Más personal en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 134, "date": "2026-08-31T12:08:19", "servicio": "Farmacia", "tipo": "Familiar/Acompañante", "s1": 10, "s2": 10, "s3": 8, "s4": 4, "s5": 9, "nps": 8, "best": ".", "improve": "Más personal en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 135, "date": "2026-08-31T15:21:21", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 7, "s4": 5, "s5": 8, "nps": 6, "best": ".", "improve": "Incrementar ventanilla preferencial", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 136, "date": "2026-08-31T17:05:30", "servicio": "Farmacia", "tipo": "Familiar/Acompañante", "s1": 8, "s2": 10, "s3": 6, "s4": 6, "s5": 8, "nps": 8, "best": ".", "improve": "Más personal en farmacia", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 137, "date": "2026-08-31T17:06:25", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 5, "s4": 1, "s5": 7, "nps": 5, "best": "Atención del dr. Velazquez", "improve": "Más personal en caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 138, "date": "2026-08-31T17:09:11", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 4, "s4": 3, "s5": 8, "nps": 6, "best": "Atención del dr grajeda", "improve": "Caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 139, "date": "2026-08-31T17:13:11", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 8, "s2": 10, "s3": 6, "s4": 5, "s5": 8, "nps": 8, "best": "Pude ser atendiendo", "improve": "Más personal en caja", "canal": "WhatsApp", "dificultad": "No", "cual": null}, {"id": 140, "date": "2026-08-31T17:15:28", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 8, "s4": 6, "s5": 8, "nps": 8, "best": "Encontré varios médicos para atención", "improve": "Más personas en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 141, "date": "2026-08-31T17:17:30", "servicio": "Farmacia", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 7, "s4": 6, "s5": 8, "nps": 7, "best": "A", "improve": "La ayuda del personal de presupuesto", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 142, "date": "2026-08-31T17:21:07", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 10, "s5": 10, "nps": 10, "best": "Toda la atención", "improve": "Horarios más tarde", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 143, "date": "2026-08-31T17:23:02", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 7, "s4": 5, "s5": 8, "nps": 8, "best": "Ninguna todo normal", "improve": "Más personal en atención", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 144, "date": "2026-08-31T17:25:14", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 10, "s4": 10, "s5": 5, "nps": 10, "best": ".", "improve": "Limpieza de los baños", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 145, "date": "2026-09-01T17:22:10", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 9, "s2": 10, "s3": 8, "s4": 8, "s5": 8, "nps": 8, "best": "Atención del dr Velazquez", "improve": "Limpieza de los baños", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 146, "date": "2026-09-01T17:23:55", "servicio": "Consulta externa", "tipo": "Paciente", "s1": 5, "s2": 10, "s3": 7, "s4": 5, "s5": 9, "nps": 8, "best": "Puede realizar todos los exámenes en un día", "improve": "Más personal en caja", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 147, "date": "2026-09-01T17:28:23", "servicio": "Farmacia", "tipo": "Paciente", "s1": 7, "s2": 10, "s3": 6, "s4": 1, "s5": 8, "nps": 6, "best": "Nada estoy mal y tengo que hacer cola en farmacia", "improve": "Más personal en farmacia", "canal": "Presencial", "dificultad": "No", "cual": null}, {"id": 148, "date": "2026-09-01T17:32:03", "servicio": "Laboratorio y Diagnóstico por imágenes", "tipo": "Paciente", "s1": 10, "s2": 10, "s3": 7, "s4": 5, "s5": 9, "nps": 8, "best": "Rayos x", "improve": "Más personal en caja tarde media hora después de pasar consulta para pagar rayos x", "canal": "Presencial", "dificultad": "No", "cual": null}];
+
+const STORAGE_KEY = 'encuesta:responses';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSd6XjUF0cQMzccKvoelRoSaqo3bS83FpHxflj8MsWa6wC4JzAY8uugK8LnxvNPAYehY-eYvk_0cCOK/pub?gid=0&single=true&output=csv';
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Setiembre','Octubre','Noviembre','Diciembre'];
+const TRIVIAL = new Set(['','.','..','...','-','na','n/a','ninguna','ninguno','ningún','ningun','todo bien','nada','todo']);
+
+let dataset = [];   // merged, deduped by id
+let currentTab = null;
+
+function normServicio(s){
+  if(!s) return 'Sin especificar';
+  s = s.trim();
+  if(/^urgencias?$/i.test(s)) return 'Emergencia'; // unificado: "Urgencias" fue el nombre previo al lanzamiento de Emergencias (jul 2026)
+  return s;
+}
+
+function monthKey(dateObj){
+  return dateObj.getFullYear() + '-' + String(dateObj.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(key){
+  const [y,m] = key.split('-').map(Number);
+  const now = new Date();
+  const isCurrent = (y === now.getFullYear() && m === (now.getMonth()+1));
+  return MONTH_NAMES[m-1] + ' ' + y + (isCurrent ? ' (parcial)' : '');
+}
+
+function mergeRows(base, incoming){
+  const map = new Map();
+  base.forEach(r => map.set(r.id, r));
+  incoming.forEach(r => map.set(r.id, r)); // incoming gana en caso de choque de ID
+  return Array.from(map.values());
+}
+
+const STORAGE_AVAILABLE = (typeof window.storage !== 'undefined'); // false fuera del entorno de artefactos de Claude (ej. GitHub Pages)
+let storageOk = true; // se actualiza tras cada intento de guardado
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function loadStored(){
+  if(!STORAGE_AVAILABLE) return null;
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value) return JSON.parse(res.value);
+  }catch(e){ /* no existe aún, es normal la primera vez */ }
+  return null;
+}
+
+async function saveStored(rows, attempt = 1){
+  if(!STORAGE_AVAILABLE) return true; // nada que guardar: la fuente de la verdad es otra (Sheet / carga manual de la sesión)
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(rows), false);
+    storageOk = true;
+    updateBanner();
+    return true;
+  }catch(e){
+    console.error('No se pudo guardar (intento ' + attempt + ')', e);
+    if(attempt < 3){
+      await sleep(500 * attempt);
+      return saveStored(rows, attempt + 1);
+    }
+    storageOk = false;
+    updateBanner();
+    return false;
+  }
+}
+
+function updateBanner(){
+  const banner = document.getElementById('storageBanner');
+  const text = document.getElementById('storageBannerText');
+  if(!STORAGE_AVAILABLE || storageOk){
+    banner.classList.remove('show');
+    return;
+  }
+  text.textContent = 'No se pudo guardar en la nube (error del servidor de almacenamiento). Tus datos siguen visibles en esta pestaña, pero si la cierras sin arreglarlo se pierden. Descarga un respaldo por si acaso.';
+  banner.classList.add('show');
+}
+
+async function fetchFromSheet(silent){
+  if(!SHEET_CSV_URL) return false;
+  const syncEl = document.getElementById('syncStatus');
+  if(syncEl && !silent) syncEl.textContent = 'Sincronizando con Google Sheets…';
+  try{
+    const res = await fetch(SHEET_CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const wb = XLSX.read(text, {type:'string', cellDates:true});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+    const parsed = parseSheetRows(aoa);
+    if(parsed.length === 0) throw new Error('CSV sin filas reconocibles');
+    dataset = mergeRows(dataset, parsed);
+    await saveStored(dataset);
+    if(syncEl) syncEl.textContent = 'Conectado a Google Sheets · sincronizado ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+    return true;
+  }catch(e){
+    console.error('No se pudo sincronizar con Google Sheets', e);
+    if(syncEl) syncEl.textContent = 'No se pudo sincronizar con Google Sheets (mostrando la última copia disponible).';
+    return false;
+  }
+}
+
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(dataset, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'encuesta-respaldo-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('retrySaveBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('retrySaveBtn');
+  btn.disabled = true; btn.textContent = 'Reintentando…';
+  const ok = await saveStored(dataset);
+  btn.disabled = false; btn.textContent = 'Reintentar guardado';
+  if(ok){
+    const status = document.getElementById('uploadStatus');
+    status.className = 'upload-status ok';
+    status.textContent = 'Guardado correctamente.';
+  }
+});
+document.getElementById('downloadBackupBtn').addEventListener('click', downloadBackup);
+
+function findCol(headers, needles){
+  const norm = h => (h||'').toString().toLowerCase();
+  for(let i=0;i<headers.length;i++){
+    const h = norm(headers[i]);
+    if(needles.some(n => h.includes(n))) return i;
+  }
+  return -1;
+}
+
+function parseSheetRows(aoa){
+  // aoa: array de arrays (header + filas)
+  let headerRowIdx = aoa.findIndex(row => row.some(c => (c||'').toString().toLowerCase().includes('hora de inicio')));
+  if(headerRowIdx === -1) headerRowIdx = 0;
+  const headers = aoa[headerRowIdx];
+  const body = aoa.slice(headerRowIdx+1).filter(r => r.some(c => c !== null && c !== undefined && c !== ''));
+
+  const col = {
+    id: findCol(headers, ['id']),
+    date: findCol(headers, ['hora de inicio']),
+    servicio: findCol(headers, ['servicio fuiste atendido', 'en qué servicio']),
+    s1: findCol(headers, ['trato y amabilidad']),
+    s2: findCol(headers, ['profesional de salud']),
+    s3: findCol(headers, ['tiempo de atención', 'tiempo de atencion']),
+    s4: findCol(headers, ['procesos de admisión', 'admision, caja', 'admisión, caja']),
+    s5: findCol(headers, ['limpieza']),
+    nps: findCol(headers, ['recomiende', 'recomendaría', 'recomendaria']),
+    best: findCol(headers, ['mejor de su experiencia']),
+    improve: findCol(headers, ['deberíamos mejorar', 'deberiamos mejorar']),
+  };
+
+  function toDate(v){
+    if(v instanceof Date) return v;
+    if(typeof v === 'number') { const d = XLSX.SSF.parse_date_code(v); return new Date(d.y, d.m-1, d.d, d.H||0, d.M||0, d.S||0); }
+    if(typeof v === 'string'){
+      // formato del CSV publicado por Google Sheets: M/D/YY H:MM:SS o M/D/YYYY H:MM:SS
+      const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+      if(m){
+        const mo = Number(m[1]), da = Number(m[2]); let yr = Number(m[3]);
+        const h = Number(m[4]), mi = Number(m[5]), se = Number(m[6]);
+        if(yr < 100) yr += 2000; // año de 2 dígitos: siempre 20XX para esta encuesta
+        const d = new Date(yr, mo - 1, da, h, mi, se);
+        return isNaN(d) ? null : d;
+      }
+    }
+    const d = new Date(v);
+    return isNaN(d) ? null : d;
+  }
+
+  const rows = [];
+  body.forEach((r, i) => {
+    const dateVal = col.date >= 0 ? toDate(r[col.date]) : null;
+    if(!dateVal) return;
+    rows.push({
+      id: col.id >= 0 && r[col.id] !== undefined && r[col.id] !== '' ? r[col.id] : ('row-' + headerRowIdx + '-' + i + '-' + dateVal.getTime()),
+      date: dateVal.toISOString(),
+      servicio: col.servicio >= 0 ? r[col.servicio] : null,
+      s1: col.s1 >= 0 ? Number(r[col.s1]) : null,
+      s2: col.s2 >= 0 ? Number(r[col.s2]) : null,
+      s3: col.s3 >= 0 ? Number(r[col.s3]) : null,
+      s4: col.s4 >= 0 ? Number(r[col.s4]) : null,
+      s5: col.s5 >= 0 ? Number(r[col.s5]) : null,
+      nps: col.nps >= 0 ? Number(r[col.nps]) : null,
+      best: col.best >= 0 ? (r[col.best]||'').toString().trim() : '',
+      improve: col.improve >= 0 ? (r[col.improve]||'').toString().trim() : '',
+    });
+  });
+  return rows;
+}
+
+async function afterMerge(status, parsedCount){
+  const saved = await saveStored(dataset);
+  render();
+  if(saved){
+    status.className = 'upload-status ok';
+    status.textContent = 'Listo — ' + parsedCount + ' filas leídas, ' + dataset.length + ' respuestas en total. Guardado en la nube.';
+  }else{
+    status.className = 'upload-status err';
+    status.textContent = 'Los datos se ven en esta pestaña (' + dataset.length + ' respuestas), pero NO se guardaron en la nube. Revisa el aviso de arriba.';
+  }
+}
+
+function handleFile(file){
+  const status = document.getElementById('uploadStatus');
+  status.className = 'upload-status';
+  status.textContent = 'Procesando ' + file.name + '…';
+
+  const isJson = /\.json$/i.test(file.name);
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    try{
+      if(isJson){
+        const parsed = JSON.parse(e.target.result);
+        if(!Array.isArray(parsed) || parsed.length === 0 || !parsed[0].id || !parsed[0].date){
+          status.className = 'upload-status err';
+          status.textContent = 'Ese .json no tiene el formato de respaldo esperado.';
+          return;
+        }
+        dataset = mergeRows(dataset, parsed);
+        await afterMerge(status, parsed.length);
+        return;
+      }
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+      const parsed = parseSheetRows(aoa);
+      if(parsed.length === 0){
+        status.className = 'upload-status err';
+        status.textContent = 'No encontré filas válidas (revisa que tenga la columna "Hora de inicio").';
+        return;
+      }
+      dataset = mergeRows(dataset, parsed);
+      await afterMerge(status, parsed.length);
+    }catch(err){
+      console.error(err);
+      status.className = 'upload-status err';
+      status.textContent = 'No pude leer ese archivo. ¿Es el export tal cual del formulario, o un respaldo .json válido?';
+    }
+  };
+
+  if(isJson) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  if(e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+// ---------- render ----------
+
+let charts = {}; // destruir al re-renderizar
+
+function avg(nums){
+  const v = nums.filter(n => typeof n === 'number' && !isNaN(n));
+  if(v.length === 0) return null;
+  return v.reduce((a,b)=>a+b,0) / v.length;
+}
+function fmt1(n){ return n === null ? '—' : n.toFixed(1); }
+
+function computeMonths(){
+  const map = new Map(); // key -> rows[]
+  dataset.forEach(r => {
+    const d = new Date(r.date);
+    const k = monthKey(d);
+    if(!map.has(k)) map.set(k, []);
+    map.get(k).push(r);
+  });
+  // asegurar que junio 2026 siempre aparezca, aunque esté vacío
+  const year = dataset.length ? new Date(dataset[0].date).getFullYear() : new Date().getFullYear();
+  const juneKey = year + '-06';
+  if(!map.has(juneKey)) map.set(juneKey, []);
+  return new Map([...map.entries()].sort());
+}
+
+function renderTabs(monthsMap){
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  const keys = Array.from(monthsMap.keys());
+  if(!keys.includes(currentTab)) currentTab = keys[keys.length-1];
+  keys.forEach(k => {
+    const rows = monthsMap.get(k);
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (k === currentTab ? ' active' : '');
+    if(rows.length === 0) btn.dataset.empty = 'true';
+    btn.textContent = monthLabel(k) + (rows.length ? ' · ' + rows.length : '');
+    btn.addEventListener('click', () => { currentTab = k; render(); });
+    tabsEl.appendChild(btn);
+  });
+}
+
+function renderMeta(){
+  const meta = document.getElementById('metaLine');
+  if(dataset.length === 0){ meta.textContent = 'Todavía no hay respuestas cargadas.'; return; }
+  const dates = dataset.map(r => new Date(r.date)).sort((a,b)=>a-b);
+  const last = dates[dates.length-1];
+  meta.innerHTML = '<strong>' + dataset.length + '</strong> respuestas en total · última recibida ' + last.toLocaleDateString('es-PE', {day:'numeric', month:'long', year:'numeric'});
+}
+
+function computeMonthlySeries(monthsMap){
+  const keys = Array.from(monthsMap.keys());
+  const labels = keys.map(monthLabel);
+  const dimKeys = ['s1','s2','s3','s4','s5'];
+  const dimSeries = dimKeys.map(() => []);
+  const npsSeries = [];
+  const countSeries = [];
+  keys.forEach(k => {
+    const rows = monthsMap.get(k);
+    countSeries.push(rows.length);
+    dimKeys.forEach((d,i) => dimSeries[i].push(rows.length ? avg(rows.map(r => r[d])) : null));
+    if(rows.length){
+      const npsVals = rows.map(r => r.nps).filter(n => typeof n === 'number' && !isNaN(n));
+      if(npsVals.length){
+        const p = npsVals.filter(n => n >= 9).length, dtr = npsVals.filter(n => n <= 6).length;
+        npsSeries.push(Math.round(((p - dtr) / npsVals.length) * 100));
+      } else npsSeries.push(null);
+    } else npsSeries.push(null);
+  });
+  return {labels, dimSeries, npsSeries, countSeries};
+}
+
+function renderEvolution(monthsMap){
+  const {labels, dimSeries, npsSeries, countSeries} = computeMonthlySeries(monthsMap);
+  const dimMeta = [
+    {label:'Trato y amabilidad', color:'#0D8BAB'},
+    {label:'Atención profesional', color:'#58CBF5'},
+    {label:'Tiempo de atención', color:'#FFAC4D'},
+    {label:'Procesos de admisión', color:'#0A6D86'},
+    {label:'Limpieza e infraestructura', color:'#E39A2E'},
+  ];
+
+  charts.evolution = new Chart(document.getElementById('chartEvolution'), {
+    type:'line',
+    data:{ labels, datasets: dimMeta.map((m,i) => ({
+      label:m.label, data:dimSeries[i], borderColor:m.color, backgroundColor:m.color,
+      tension:.3, spanGaps:false, pointRadius:4, borderWidth:2
+    }))},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5}}} },
+      scales:{ y:{min:0, max:10, ticks:{stepSize:2}, grid:{color:'#EEF2F4'}}, x:{grid:{display:false}} } }
+  });
+
+  charts.npsEvolution = new Chart(document.getElementById('chartNpsEvolution'), {
+    data:{ labels, datasets:[
+      {type:'bar', label:'Respuestas', data:countSeries, backgroundColor:'#DCEFF6', borderRadius:4, yAxisID:'y1', order:2},
+      {type:'line', label:'NPS', data:npsSeries, borderColor:'#FFAC4D', backgroundColor:'#FFAC4D', tension:.3, spanGaps:false, pointRadius:4, borderWidth:2, yAxisID:'y', order:1},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5}}} },
+      scales:{
+        y:{ min:-100, max:100, position:'left', grid:{color:'#EEF2F4'}, title:{display:true, text:'NPS', font:{size:11}} },
+        y1:{ min:0, position:'right', grid:{display:false}, title:{display:true, text:'Respuestas', font:{size:11}} },
+        x:{ grid:{display:false} }
+      } }
+  });
+}
+
+function render(){
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+
+  const monthsMap = computeMonths();
+  renderTabs(monthsMap);
+  renderMeta();
+  renderEvolution(monthsMap);
+
+  const rows = monthsMap.get(currentTab) || [];
+  const content = document.getElementById('content');
+
+  if(rows.length === 0){
+    content.innerHTML = `<div class="empty-month"><b>Sin respuestas este mes</b>Sube el export correspondiente con el botón "Actualizar datos".</div>`;
+    return;
+  }
+
+  const dims = [
+    {key:'s1', label:'Trato y amabilidad del personal'},
+    {key:'s2', label:'Atención del profesional de salud'},
+    {key:'s3', label:'Tiempo de atención'},
+    {key:'s4', label:'Procesos de admisión, caja o programación'},
+    {key:'s5', label:'Limpieza e infraestructura'},
+  ];
+  const averages = dims.map(d => avg(rows.map(r => r[d.key])));
+
+  const npsVals = rows.map(r => r.nps).filter(n => typeof n === 'number' && !isNaN(n));
+  const promoters = npsVals.filter(n => n >= 9).length;
+  const passives = npsVals.filter(n => n >= 7 && n <= 8).length;
+  const detractors = npsVals.filter(n => n <= 6).length;
+  const npsScore = npsVals.length ? Math.round(((promoters - detractors) / npsVals.length) * 100) : null;
+
+  // servicio breakdown
+  const servMap = new Map();
+  rows.forEach(r => {
+    const s = normServicio(r.servicio);
+    if(!servMap.has(s)) servMap.set(s, []);
+    servMap.get(s).push(r);
+  });
+  const servEntries = Array.from(servMap.entries()).sort((a,b) => b[1].length - a[1].length);
+
+  content.innerHTML = `
+    <div class="kpi-row">
+      ${dims.map((d,i) => `
+        <div class="kpi">
+          <div class="label">${d.label}</div>
+          <div class="value">${fmt1(averages[i])}<span> /10</span></div>
+        </div>`).join('')}
+    </div>
+
+    <div class="nps-card">
+      <div class="nps-score"><span>NPS del mes</span>${npsScore === null ? '—' : npsScore}</div>
+      <div class="nps-breakdown">
+        <div><b>${promoters}</b>Promotores (9–10)</div>
+        <div><b>${passives}</b>Pasivos (7–8)</div>
+        <div><b>${detractors}</b>Detractores (0–6)</div>
+        <div><b>${npsVals.length}</b>Respuestas con NPS</div>
+      </div>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <h3>Promedios por dimensión</h3>
+        <canvas id="chartDims"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Respuestas por servicio</h3>
+        <canvas id="chartServ"></canvas>
+        <table class="servicio-table">
+          <tr><th>Servicio</th><th>N</th><th>Prom.</th></tr>
+          ${servEntries.map(([name, rs]) => `<tr><td>${name}</td><td>${rs.length}</td><td>${fmt1(avg(rs.flatMap(r=>[r.s1,r.s2,r.s3,r.s4,r.s5])))}</td></tr>`).join('')}
+        </table>
+        <div class="note">"Urgencias" se agrupa con "Emergencia" (nombre previo al lanzamiento de Área de Emergencias).</div>
+      </div>
+    </div>
+
+    <div class="comments">
+      <div class="panel best">
+        <h3>Lo mejor de la experiencia</h3>
+        <ul>${renderComments(rows, 'best')}</ul>
+      </div>
+      <div class="panel improve">
+        <h3>Qué mejorar urgentemente</h3>
+        <ul>${renderComments(rows, 'improve')}</ul>
+      </div>
+    </div>
+  `;
+
+  charts.dims = new Chart(document.getElementById('chartDims'), {
+    type:'bar',
+    data:{ labels: dims.map(d=>d.label.length>22 ? d.label.slice(0,20)+'…' : d.label),
+      datasets:[{ data: averages, backgroundColor:'#0D8BAB', borderRadius:4, maxBarThickness:38 }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{ title: (items) => dims[items[0].dataIndex].label }} },
+      scales:{ y:{ min:0, max:10, ticks:{stepSize:2}, grid:{color:'#EEF2F4'} }, x:{ grid:{display:false} } } }
+  });
+
+  charts.serv = new Chart(document.getElementById('chartServ'), {
+    type:'bar',
+    data:{ labels: servEntries.map(e=>e[0]),
+      datasets:[{ data: servEntries.map(e=>e[1].length), backgroundColor:'#58CBF5', borderRadius:4, maxBarThickness:28 }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ beginAtZero:true, ticks:{precision:0}, grid:{color:'#EEF2F4'} }, y:{ grid:{display:false} } } }
+  });
+}
+
+function renderComments(rows, field){
+  const items = rows
+    .map(r => r[field])
+    .map(s => (s||'').trim())
+    .filter(s => s && !TRIVIAL.has(s.toLowerCase()));
+  if(items.length === 0) return '<div class="empty">Sin comentarios registrados este mes.</div>';
+  return items.map(s => `<li>${s.replace(/</g,'&lt;')}</li>`).join('');
+}
+
+// ---------- boot ----------
+(async function init(){
+  const stored = await loadStored();
+  dataset = mergeRows(SEED_DATA, stored || []);
+  render(); // mostrar de inmediato, sin esperar al guardado
+  if(!stored) await saveStored(dataset); // primera vez: persistir la carga inicial (actualiza el banner si falla)
+
+  if(SHEET_CSV_URL){
+    document.getElementById('syncStatus').style.display = 'block';
+    const ok = await fetchFromSheet();
+    if(ok) render();
+    setInterval(async () => { const changed = await fetchFromSheet(true); if(changed) render(); }, 5 * 60 * 1000);
+  }
+})();
+</script>
+</body>
+</html>
